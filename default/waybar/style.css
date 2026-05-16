@@ -1,0 +1,707 @@
+/* SolverForge Linux — Waybar: Hackerman floating island, Amiga corners */
+/* Background/borders: hackerman palette. Icons/status: semantic for readability. */
+
+@define-color bg-deep      #0B0C16;
+@define-color bg-dark      #141528;
+@define-color bg-elevated  #1c1d36;
+@define-color teal          #82FB9C;
+@define-color teal-bright   #9cf7c2;
+@define-color teal-dim      #6a6e95;
+@define-color green         #50f872;
+@define-color green-bright  #85ff9d;
+@define-color text-bright   #ddf7ff;
+@define-color text-dim      #6a6e95;
+@define-color warn          #e5c07b;
+@define-color crit          #e06c75;
+@define-color red-dim       #85343a;
+@define-color info          #829dd4;
+
+/* ─── Reset ────────────────────────────────────────────────────── */
+
+* {
+    border: none;
+    border-radius: 0;
+    font-family: "FiraCode Nerd Font", "Symbols Nerd Font", monospace;
+    font-size: 13px;
+    box-shadow: none;
+    text-shadow: none;
+    min-height: 0;
+}
+
+/* ─── Bar: floating island ─────────────────────────────────────── */
+
+window#waybar {
+    background: transparent;
+    color: @text-bright;
+}
+
+window#waybar > box {
+    background-color: alpha(@bg-deep, 0.88);
+    border: 1px solid alpha(@teal, 0.25);
+    border-radius: 3px;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.5),
+                0 0 12px alpha(@teal, 0.08);
+    padding: 0 4px;
+}
+
+/* ─── Tooltips ─────────────────────────────────────────────────── */
+
+tooltip {
+    background-color: @bg-deep;
+    border: 2px solid alpha(@teal, 0.5);
+    border-radius: 3px;
+    color: @text-bright;
+}
+
+tooltip label {
+    color: @text-bright;
+    padding: 4px 8px;
+}
+
+/* ─── Module base ──────────────────────────────────────────────── */
+
+#cpu,
+#memory,
+#temperature,
+#disk,
+#language,
+#network,
+#bluetooth,
+#pulseaudio,
+#custom-codexbar,
+#custom-repobar,
+#custom-trexbar,
+#custom-voxtype,
+#custom-podman,
+#custom-ollama,
+#custom-virsh,
+#custom-updates,
+#custom-notifications,
+#custom-power-profile,
+#clock,
+#cava,
+#custom-power {
+    background-color: alpha(@bg-dark, 0.65);
+    border: 1px solid alpha(@teal, 0.15);
+    border-radius: 3px;
+    padding: 2px 12px;
+    margin: 4px 1px;
+    transition-property: background-color, color, box-shadow, border-color;
+    transition-duration: 0.3s;
+    transition-timing-function: ease-in-out;
+}
+
+#cpu:hover,
+#memory:hover,
+#temperature:hover,
+#disk:hover,
+#language:hover,
+#network:hover,
+#bluetooth:hover,
+#pulseaudio:hover,
+#custom-codexbar:hover,
+#custom-repobar:hover,
+#custom-trexbar:hover,
+#custom-voxtype:hover,
+#custom-podman:hover,
+#custom-ollama:hover,
+#custom-updates:hover,
+#custom-notifications:hover,
+#custom-power-profile:hover,
+#clock:hover,
+#custom-power:hover {
+    background-color: alpha(@teal, 0.15);
+    border-color: alpha(@teal, 0.4);
+    box-shadow: 0 0 8px alpha(@teal, 0.25);
+}
+
+/* ─── SolverForge logo ─────────────────────────────────────────── */
+
+#image {
+    margin: 4px 1px 4px 4px;
+    padding: 0 4px;
+}
+
+/* ─── Workspaces: dots + focused number, fluid transitions ────── */
+/* Original aesthetic preserved. No persistent workspaces.          */
+/* Non-focused: color transparent hides number, dot via font.       */
+/* Focused: number revealed. All valid GTK3 CSS.                    */
+
+#workspaces {
+    background-color: alpha(@bg-dark, 0.65);
+    border: 1px solid alpha(@teal, 0.15);
+    border-radius: 3px;
+    margin: 4px 1px;
+    padding: 0 4px;
+}
+
+#workspaces button {
+    background-color: transparent;
+    background-image: none;
+    color: @text-dim;
+    padding: 2px 6px;
+    margin: 2px 0px;
+    border-radius: 2px;
+    font-weight: bold;
+    transition-property: color, background-color, box-shadow, border-color;
+    transition-duration: 0.3s;
+    transition-timing-function: cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+#workspaces button:hover {
+    background-color: alpha(@teal, 0.1);
+    color: @teal-bright;
+}
+
+#workspaces button.focused,
+#workspaces button.active {
+    background-color: alpha(@teal, 0.2);
+    color: @green-bright;
+    border: 1px solid alpha(@teal, 0.4);
+    border-radius: 2px;
+    box-shadow: 0 0 6px rgba(130, 251, 156, 0.35),
+                0 0 14px rgba(130, 251, 156, 0.15);
+}
+
+#workspaces button.visible {
+    color: @green;
+}
+
+#workspaces button.urgent {
+    background-color: alpha(@crit, 0.2);
+    color: @crit;
+    border-radius: 2px;
+    box-shadow: 0 0 6px rgba(224, 108, 117, 0.35);
+}
+
+/* ─── Scratchpad ───────────────────────────────────────────────── */
+
+#scratchpad {
+    background-color: alpha(@bg-dark, 0.65);
+    border: 1px solid alpha(@green, 0.2);
+    border-radius: 3px;
+    color: @green;
+    padding: 2px 12px;
+    margin: 4px 1px;
+}
+
+/* ─── Mode (voxtype_recording, voxtype_suppress) ───────────────── */
+
+#mode {
+    background-color: alpha(@crit, 0.2);
+    border: 1px solid alpha(@crit, 0.4);
+    border-radius: 3px;
+    color: @crit;
+    padding: 2px 12px;
+    margin: 4px 1px;
+    animation: mode-pulse 2s steps(8) infinite;
+}
+
+@keyframes mode-pulse {
+    0%   { box-shadow: 0 0 4px rgba(224, 108, 117, 0.2); }
+    50%  { box-shadow: 0 0 12px rgba(224, 108, 117, 0.5); }
+    100% { box-shadow: 0 0 4px rgba(224, 108, 117, 0.2); }
+}
+
+/* ─── System monitors: center group ───────────────────────────── */
+
+#cpu {
+    color: @teal;
+}
+
+#memory {
+    color: @green;
+}
+
+#temperature {
+    color: @teal-bright;
+}
+
+#disk {
+    color: @text-dim;
+}
+
+#custom-codexbar {
+    color: @teal-bright;
+    min-width: 0;
+    padding: 2px 6px;
+    background-color: alpha(@bg-dark, 0.76);
+    border-color: alpha(@teal, 0.24);
+    box-shadow: 0 0 10px alpha(@teal, 0.10);
+}
+
+#custom-codexbar.error {
+    color: @crit;
+    border-color: alpha(@crit, 0.45);
+    box-shadow: 0 0 12px alpha(@crit, 0.22);
+}
+
+#custom-codexbar.partial {
+    color: @warn;
+    border-color: alpha(@warn, 0.35);
+    box-shadow: 0 0 8px alpha(@warn, 0.12);
+}
+
+#custom-codexbar.stale {
+    color: @text-dim;
+    border-color: alpha(@text-dim, 0.35);
+}
+
+#custom-codexbar.loading {
+    color: @teal-dim;
+}
+
+#custom-codexbar.healthy {
+    color: @teal-bright;
+}
+
+#custom-codexbar.warning {
+    color: @warn;
+    border-color: alpha(@warn, 0.40);
+    box-shadow: 0 0 12px alpha(@warn, 0.18);
+}
+
+#custom-codexbar.critical {
+    color: @crit;
+    border-color: alpha(@crit, 0.45);
+    box-shadow: 0 0 14px alpha(@crit, 0.24);
+    animation: crit-glow 2s steps(12) infinite;
+}
+
+#custom-codexbar.pace-hot {
+    background-color: alpha(@crit, 0.10);
+}
+
+#custom-codexbar.pace-reserve {
+    background-color: alpha(@green, 0.10);
+}
+
+#custom-codexbar.pace-even {
+    background-color: alpha(@teal, 0.08);
+}
+
+#custom-codexbar.mode-pinned {
+    border-style: solid;
+}
+
+#custom-codexbar.mode-auto {
+    border-style: dashed;
+}
+
+#custom-codexbar.provider-codex,
+#custom-codexbar.codex {
+    color: @teal-bright;
+    border-color: alpha(@teal, 0.38);
+    box-shadow: 0 0 12px alpha(@teal, 0.14);
+}
+
+#custom-codexbar.provider-claude,
+#custom-codexbar.claude {
+    color: @warn;
+    border-color: alpha(@warn, 0.42);
+    box-shadow: 0 0 12px alpha(@warn, 0.18);
+}
+
+#custom-codexbar.provider-gemini,
+#custom-codexbar.gemini {
+    color: @info;
+    border-color: alpha(@info, 0.42);
+    box-shadow: 0 0 12px alpha(@info, 0.18);
+}
+
+#custom-codexbar.partial,
+#custom-codexbar.warning {
+    color: @warn;
+    border-color: alpha(@warn, 0.40);
+    box-shadow: 0 0 12px alpha(@warn, 0.18);
+}
+
+#custom-codexbar.error,
+#custom-codexbar.critical {
+    color: @crit;
+    border-color: alpha(@crit, 0.45);
+    box-shadow: 0 0 14px alpha(@crit, 0.24);
+}
+
+#custom-codexbar.stale {
+    color: @text-dim;
+    border-color: alpha(@text-dim, 0.35);
+    box-shadow: none;
+}
+
+#custom-repobar {
+    color: @teal-bright;
+    min-width: 0;
+    padding: 2px 6px;
+    background-color: alpha(@bg-dark, 0.76);
+    border-color: alpha(@info, 0.30);
+    box-shadow: 0 0 10px alpha(@info, 0.10);
+}
+
+#custom-repobar.healthy {
+    color: @teal-bright;
+    border-color: alpha(@teal, 0.35);
+}
+
+#custom-repobar.loading,
+#custom-repobar.stale {
+    color: @text-dim;
+    border-color: alpha(@text-dim, 0.35);
+    box-shadow: none;
+}
+
+#custom-repobar.has-work {
+    color: @warn;
+    border-color: alpha(@warn, 0.38);
+    box-shadow: 0 0 10px alpha(@warn, 0.14);
+}
+
+#custom-repobar.local-dirty {
+    background-color: alpha(@warn, 0.10);
+}
+
+#custom-repobar.has-ci-failures,
+#custom-repobar.error,
+#custom-repobar.rate-limited {
+    color: @crit;
+    border-color: alpha(@crit, 0.45);
+    box-shadow: 0 0 12px alpha(@crit, 0.20);
+}
+
+#custom-trexbar {
+    color: @green-bright;
+    min-width: 0;
+    padding: 2px 6px;
+    background-color: alpha(@bg-dark, 0.76);
+    border-color: alpha(@green, 0.30);
+    box-shadow: 0 0 10px alpha(@green, 0.10);
+}
+
+#custom-trexbar.healthy {
+    color: @green-bright;
+    border-color: alpha(@green, 0.35);
+}
+
+#custom-trexbar.loading,
+#custom-trexbar.stale {
+    color: @text-dim;
+    border-color: alpha(@text-dim, 0.35);
+    box-shadow: none;
+}
+
+#custom-trexbar.no-sessions {
+    color: @text-dim;
+    border-color: alpha(@text-dim, 0.28);
+}
+
+#custom-trexbar.has-agents {
+    background-color: alpha(@teal, 0.08);
+    border-color: alpha(@teal, 0.38);
+}
+
+#custom-trexbar.has-attached {
+    border-style: solid;
+}
+
+#custom-trexbar.dirty-repos {
+    background-color: alpha(@warn, 0.08);
+}
+
+#custom-trexbar.high-cpu,
+#custom-trexbar.high-memory,
+#custom-trexbar.warning {
+    color: @warn;
+    border-color: alpha(@warn, 0.40);
+    box-shadow: 0 0 12px alpha(@warn, 0.18);
+}
+
+#custom-trexbar.error,
+#custom-trexbar.critical {
+    color: @crit;
+    border-color: alpha(@crit, 0.45);
+    box-shadow: 0 0 14px alpha(@crit, 0.24);
+    animation: crit-glow 2s steps(12) infinite;
+}
+
+/* Warning / Critical states */
+
+#cpu.warning,
+#memory.warning {
+    color: @warn;
+    border-color: alpha(@warn, 0.3);
+}
+
+#cpu.critical,
+#memory.critical {
+    color: @crit;
+    border-color: alpha(@crit, 0.4);
+    animation: crit-glow 2s steps(12) infinite;
+}
+
+#temperature.critical {
+    color: @crit;
+    border-color: alpha(@crit, 0.4);
+    animation: crit-glow 2s steps(12) infinite;
+}
+
+#disk.warning {
+    color: @warn;
+    border-color: alpha(@warn, 0.3);
+}
+
+#disk.critical {
+    color: @crit;
+    border-color: alpha(@crit, 0.4);
+}
+
+@keyframes crit-glow {
+    0%   { box-shadow: 0 0 4px rgba(224, 108, 117, 0.2); }
+    50%  { box-shadow: 0 0 14px rgba(224, 108, 117, 0.6); }
+    100% { box-shadow: 0 0 4px rgba(224, 108, 117, 0.2); }
+}
+
+/* ─── Cava: braille audio visualizer ──────────────────────────── */
+
+#cava {
+    color: @teal-dim;
+    font-size: 11px;
+    padding: 2px 8px;
+    letter-spacing: -1px;
+}
+
+/* ─── Power profiles ──────────────────────────────────────────── */
+
+#custom-power-profile {
+    padding: 2px 10px;
+}
+
+#custom-power-profile.performance {
+    color: @crit;
+    border-color: alpha(@crit, 0.35);
+}
+
+#custom-power-profile.balanced {
+    color: @teal-bright;
+}
+
+#custom-power-profile.power-saver {
+    color: @green-bright;
+    border-color: alpha(@green, 0.35);
+}
+
+#custom-power-profile.unknown {
+    color: @text-dim;
+}
+
+/* ─── Podman containers ───────────────────────────────────────── */
+
+#custom-podman {
+    color: @teal-bright;
+}
+
+/* ─── Ollama models ──────────────────────────────────────────── */
+
+#custom-ollama {
+    color: @green-bright;
+}
+
+/* ─── Virsh VMs ───────────────────────────────────────────────── */
+
+#custom-virsh {
+    color: @info;
+}
+
+#custom-virsh.stopped {
+    color: @text-dim;
+}
+
+/* ─── Updates ──────────────────────────────────────────────────── */
+
+#custom-updates {
+    color: @green;
+}
+
+/* ─── Keyboard layout ──────────────────────────────────────────── */
+
+#language {
+    color: @teal-dim;
+}
+
+/* ─── Network ──────────────────────────────────────────────────── */
+
+#network {
+    color: @teal;
+}
+
+#network.disconnected {
+    color: @crit;
+    border-color: alpha(@crit, 0.3);
+}
+
+/* ─── Bluetooth ────────────────────────────────────────────────── */
+
+#bluetooth {
+    color: @info;
+}
+
+#bluetooth.disabled,
+#bluetooth.off {
+    color: @text-dim;
+}
+
+#bluetooth.connected {
+    color: @green;
+}
+
+/* ─── Audio: gradient from muted dim → teal → glowing neon green ─ */
+
+#pulseaudio {
+    color: @teal-dim;
+    transition-property: color, border-color, box-shadow;
+    transition-duration: 0.4s;
+    transition-timing-function: ease-in-out;
+}
+
+#pulseaudio.muted {
+    color: #6a6e95;
+    border-color: alpha(#6a6e95, 0.15);
+    box-shadow: none;
+}
+
+#pulseaudio.low {
+    color: #7a8aaa;
+    border-color: alpha(#7a8aaa, 0.15);
+}
+
+#pulseaudio.midlow {
+    color: #6abfb0;
+    border-color: alpha(#6abfb0, 0.2);
+}
+
+#pulseaudio.mid {
+    color: #5cdba5;
+    border-color: alpha(#5cdba5, 0.25);
+    box-shadow: 0 0 4px alpha(#5cdba5, 0.12);
+}
+
+#pulseaudio.midhigh {
+    color: #60f08a;
+    border-color: alpha(#60f08a, 0.3);
+    box-shadow: 0 0 6px alpha(#60f08a, 0.2);
+}
+
+#pulseaudio.high {
+    color: #85ff9d;
+    border-color: alpha(#85ff9d, 0.4);
+    box-shadow: 0 0 10px rgba(133, 255, 157, 0.35),
+                0 0 20px rgba(80, 248, 114, 0.15);
+}
+
+#pulseaudio.blasting {
+    color: #b8ff5a;
+    border-color: alpha(#b8ff5a, 0.6);
+    box-shadow: 0 0 14px rgba(184, 255, 90, 0.5),
+                0 0 28px rgba(133, 255, 157, 0.25);
+    animation: volume-glow 1.5s ease-in-out infinite;
+}
+
+@keyframes volume-glow {
+    0%   { box-shadow: 0 0 10px rgba(184, 255, 90, 0.4), 0 0 24px rgba(133, 255, 157, 0.2); }
+    50%  { box-shadow: 0 0 18px rgba(184, 255, 90, 0.6), 0 0 36px rgba(133, 255, 157, 0.35); }
+    100% { box-shadow: 0 0 10px rgba(184, 255, 90, 0.4), 0 0 24px rgba(133, 255, 157, 0.2); }
+}
+
+/* ─── Voxtype: voice typing status ─────────────────────────────── */
+
+#custom-voxtype {
+    color: @teal;
+}
+
+#custom-voxtype.recording {
+    color: @crit;
+    border-color: alpha(@crit, 0.4);
+    animation: recording-pulse 1.5s steps(8) infinite;
+}
+
+#custom-voxtype.transcribing {
+    color: @warn;
+    border-color: alpha(@warn, 0.3);
+}
+
+#custom-voxtype.idle {
+    color: @teal-dim;
+}
+
+#custom-voxtype.stopped {
+    color: @text-dim;
+}
+
+@keyframes recording-pulse {
+    0%   { box-shadow: 0 0 4px rgba(224, 108, 117, 0.2); }
+    50%  { box-shadow: 0 0 16px rgba(224, 108, 117, 0.6); }
+    100% { box-shadow: 0 0 4px rgba(224, 108, 117, 0.2); }
+}
+
+/* ─── Clock ────────────────────────────────────────────────────── */
+
+#clock {
+    color: @teal-bright;
+    border-color: alpha(@teal, 0.25);
+}
+
+/* ─── Tray ─────────────────────────────────────────────────────── */
+
+#tray {
+    margin: 4px 1px;
+    padding: 2px 8px;
+}
+
+#tray > .passive {
+    -gtk-icon-effect: dim;
+}
+
+#tray > .needs-attention {
+    -gtk-icon-effect: highlight;
+}
+
+/* ─── Power button ─────────────────────────────────────────────── */
+
+#custom-power {
+    color: @text-dim;
+    padding: 2px 10px;
+    margin-right: 4px;
+    font-size: 15px;
+}
+
+#custom-power:hover {
+    color: @crit;
+    border-color: alpha(@crit, 0.4);
+    box-shadow: 0 0 8px alpha(@crit, 0.3);
+}
+
+/* ─── Notifications: Bell with pulse/glow ─────────────────────── */
+
+#custom-notifications {
+    color: @text-dim;
+}
+
+#custom-notifications.empty {
+    color: @text-dim;
+}
+
+#custom-notifications.active {
+    color: @teal-bright;
+    border-color: alpha(@teal, 0.3);
+    animation: notification-pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+}
+
+@keyframes notification-pulse {
+    0%   { box-shadow: 0 0 4px rgba(130, 251, 156, 0.2); }
+    50%  { box-shadow: 0 0 12px rgba(130, 251, 156, 0.5), 0 0 20px rgba(130, 251, 156, 0.3); }
+    100% { box-shadow: 0 0 4px rgba(130, 251, 156, 0.2); }
+}
+
+#custom-notifications.dnd {
+    color: @red-dim;
+    border-color: alpha(@red-dim, 0.3);
+}

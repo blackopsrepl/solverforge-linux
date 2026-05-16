@@ -1,0 +1,18 @@
+#!/bin/bash
+set -euo pipefail
+
+resolved_bin=""
+
+if [[ -n "${SOLVERFORGE_CALENDAR_BIN:-}" && -x "${SOLVERFORGE_CALENDAR_BIN}" ]]; then
+  resolved_bin="${SOLVERFORGE_CALENDAR_BIN}"
+elif [[ -x "${HOME}/.cargo/bin/solverforge-calendar" ]]; then
+  resolved_bin="${HOME}/.cargo/bin/solverforge-calendar"
+fi
+
+if [[ -z "$resolved_bin" ]]; then
+  notify-send "SolverForge Linux calendar unavailable" \
+    "Set SOLVERFORGE_CALENDAR_BIN or install solverforge-calendar under ~/.cargo/bin."
+  exit 1
+fi
+
+exec "$resolved_bin" "$@"

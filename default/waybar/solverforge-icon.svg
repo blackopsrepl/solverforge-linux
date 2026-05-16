@@ -1,0 +1,32 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="-80 -90 160 180">
+  <defs>
+    <linearGradient id="g" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#73ba25"/>
+      <stop offset="50%" style="stop-color:#35b9ab"/>
+      <stop offset="100%" style="stop-color:#73ba25"/>
+    </linearGradient>
+  </defs>
+
+  <!-- Hexagonal outer body -->
+  <path d="M0 -70 L53 -35 L63 0 L53 53 L0 77 L-53 53 L-63 0 L-53 -35 Z"
+    stroke="url(#g)" stroke-width="10" fill="none" stroke-linejoin="miter"/>
+
+  <!-- Snake head -->
+  <g transform="translate(0, -70)">
+    <path d="M0 0 L-9 -12 L-5 -6 L0 -10 L5 -6 L9 -12 Z"
+      fill="url(#g)" stroke="none"/>
+    <circle cx="-3" cy="-8" r="1.5" fill="#173f4f"/>
+    <circle cx="3" cy="-8" r="1.5" fill="#173f4f"/>
+  </g>
+
+  <!-- Tail -->
+  <path d="M0 -70 L0 -47" stroke="url(#g)" stroke-width="8"/>
+
+  <!-- Inner hexagon -->
+  <path d="M0 -35 L28 -18 L33 0 L28 28 L0 42 L-28 28 L-33 0 L-28 -18 Z"
+    stroke="#35b9ab" stroke-width="1.5" fill="none" opacity="0.3"/>
+
+  <!-- Center node -->
+  <circle cx="0" cy="0" r="5" fill="none" stroke="#35b9ab" stroke-width="2"/>
+  <circle cx="0" cy="0" r="2.5" fill="#73ba25"/>
+</svg>

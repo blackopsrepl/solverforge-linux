@@ -1,0 +1,133 @@
+#!/bin/bash
+
+# Apply the SolverForge theme: process templates, deploy overrides, wire symlinks, reload apps.
+
+SOLVERFORGE_PATH="${SOLVERFORGE_PATH:-$HOME/.local/share/solverforge}"
+THEME_DIR="$SOLVERFORGE_PATH/default/theme"
+TEMPLATES_DIR="$THEME_DIR/templates"
+OVERRIDES_DIR="$THEME_DIR/overrides"
+GENERATED_DIR="$THEME_DIR/generated"
+COLORS_FILE="$THEME_DIR/colors.toml"
+
+# Convert hex color to decimal RGB (e.g., "#1e1e2e" -> "30,30,46")
+hex_to_rgb() {
+  local hex="${1#\#}"
+  printf "%d,%d,%d" "0x${hex:0:2}" "0x${hex:2:2}" "0x${hex:4:2}"
+}
+
+if [[ ! -f $COLORS_FILE ]]; then
+  echo "Error: colors.toml not found at $COLORS_FILE" >&2
+  exit 1
+fi
+
+mkdir -p "$GENERATED_DIR"
+
+# --- Phase 1: Generate ---
+
+# Copy static overrides first (they take precedence over templates)
+if [[ -d $OVERRIDES_DIR ]]; then
+  shopt -s nullglob
+  for override in "$OVERRIDES_DIR"/*; do
+    cp "$override" "$GENERATED_DIR/$(basename "$override")"
+  done
+fi
+
+# Build sed substitution script from colors.toml
+sed_script=$(mktemp)
+
+while IFS='=' read -r key value; do
+  key="${key//[\"\' ]/}"                # strip quotes and spaces from key
+  [[ $key && $key != \#* ]] || continue # skip empty lines and comments
+  value="${value#*[\"\']}"
+  value="${value%%[\"\']*}"             # extract value between quotes
+
+  printf 's|{{ %s }}|%s|g\n' "$key" "$value"            # {{ key }} -> value
+  printf 's|{{ %s_strip }}|%s|g\n' "$key" "${value#\#}" # {{ key_strip }} -> value without leading #
+  if [[ $value =~ ^# ]]; then
+    rgb=$(hex_to_rgb "$value")
+    echo "s|{{ ${key}_rgb }}|${rgb}|g"
+  fi
+done <"$COLORS_FILE" >"$sed_script"
+
+# Process all templates — skip if override already exists
+shopt -s nullglob
+for tpl in "$TEMPLATES_DIR"/*.tpl; do
+  filename=$(basename "$tpl" .tpl)
+  output_path="$GENERATED_DIR/$filename"
+
+  # Don't overwrite files already placed by overrides
+  if [[ ! -f $output_path ]]; then
+    sed -f "$sed_script" "$tpl" >"$output_path"
+  fi
+done
+
+rm "$sed_script"
+
+generated_count=$(find "$GENERATED_DIR" -mindepth 1 -maxdepth 1 -type f | wc -l)
+echo "Generated $generated_count theme files"
+
+# --- Phase 2: Wire (symlinks from ~/.config/ to generated/) ---
+
+wire_symlink() {
+  local target="$1" link="$2"
+  mkdir -p "$(dirname "$link")"
+  ln -sf "$target" "$link"
+}
+
+# GTK 3 + 4: colors.css overrides (already @import'd by gtk.css)
+wire_symlink "$GENERATED_DIR/gtk-colors.css" "$HOME/.config/gtk-3.0/colors.css"
+wire_symlink "$GENERATED_DIR/gtk-colors.css" "$HOME/.config/gtk-4.0/colors.css"
+
+# GTK 3 + 4: settings.ini (font, theme, cursor, icons)
+wire_symlink "$GENERATED_DIR/gtk3-settings.ini" "$HOME/.config/gtk-3.0/settings.ini"
+wire_symlink "$GENERATED_DIR/gtk4-settings.ini" "$HOME/.config/gtk-4.0/settings.ini"
+
+# Qt5 + Qt6: color scheme (same format, shared generated file)
+wire_symlink "$GENERATED_DIR/qt5ct-hackerman.conf" "$HOME/.config/qt5ct/colors/hackerman.conf"
+wire_symlink "$GENERATED_DIR/qt5ct-hackerman.conf" "$HOME/.config/qt6ct/colors/hackerman.conf"
+
+# btop: theme file
+wire_symlink "$GENERATED_DIR/btop.theme" "$HOME/.config/btop/themes/hackerman.theme"
+
+# lazygit: config
+wire_symlink "$GENERATED_DIR/lazygit.yml" "$HOME/.config/lazygit/config.yml"
+
+# yazi: theme
+wire_symlink "$GENERATED_DIR/yazi-theme.toml" "$HOME/.config/yazi/theme.toml"
+
+# mc: skin
+wire_symlink "$GENERATED_DIR/mc-hackerman.ini" "$HOME/.local/share/mc/skins/hackerman.ini"
+
+# tmux: configuration
+wire_symlink "$GENERATED_DIR/tmux.conf" "$HOME/.tmux.conf"
+
+# KDE: kdeglobals (colors for dolphin, kate, etc.)
+wire_symlink "$GENERATED_DIR/kdeglobals" "$HOME/.config/kdeglobals"
+
+# KDE: hackerman color scheme (standalone, only colors — templated from colors.toml)
+wire_symlink "$GENERATED_DIR/hackerman.colors" "$HOME/.local/share/color-schemes/hackerman.colors"
+
+# KDE: kdedefaults (overrides openSUSE look-and-feel cascade)
+wire_symlink "$GENERATED_DIR/kdedefaults-kdeglobals" "$HOME/.config/kdedefaults/kdeglobals"
+
+# KDE: activate color scheme (the official way — updates caches, sends DBus signals)
+plasma-apply-colorscheme hackerman 2>/dev/null
+
+# swaync: style.css (copy — swaync doesn't follow symlinks)
+mkdir -p "$HOME/.config/swaync"
+cp "$GENERATED_DIR/swaync.css" "$HOME/.config/swaync/style.css"
+
+echo "Wired symlinks to ~/.config/"
+
+# --- Phase 3: Reload ---
+
+if [[ "$1" == "--reload" ]]; then
+  echo "Reloading applications..."
+  killall -SIGUSR1 kitty 2>/dev/null
+  swaymsg reload 2>/dev/null
+  pkill -SIGUSR2 btop 2>/dev/null
+  killall -SIGUSR2 opencode 2>/dev/null
+  swaync-client --reload-css 2>/dev/null
+  tmux source-file ~/.tmux.conf 2>/dev/null
+  echo "Reload complete"
+fi

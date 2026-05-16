@@ -1,0 +1,26 @@
+#!/bin/bash
+set -euo pipefail
+
+# SolverForge — VIGILANCE backup prune script
+# Sources shared configuration from SolverForge backup.conf
+
+SOLVERFORGE_PATH="${SOLVERFORGE_PATH:-$HOME/.local/share/solverforge}"
+
+# Load backup configuration (default layer, then user override)
+# shellcheck source=/dev/null
+source "$SOLVERFORGE_PATH/default/bash/backup.conf"
+# shellcheck source=/dev/null
+[[ -f "$HOME/.config/solverforge/backup.conf" ]] && source "$HOME/.config/solverforge/backup.conf"
+
+LOG_TAG="restic-prune"
+LOCK_FILE="${SOLVERFORGE_BACKUP_LOCK:-/run/solverforge-backup/lock}"
+
+exec 9>"$LOCK_FILE"
+flock 9
+
+logger -t $LOG_TAG "Pruning all backups..."
+if restic -q -r "$RESTIC_REPO" --password-file "$RESTIC_PASSWORD_FILE" forget --keep-within 7d --prune; then
+    logger -t $LOG_TAG "All backups pruned"
+else
+    logger -t $LOG_TAG "Pruning of backups failed!"
+fi

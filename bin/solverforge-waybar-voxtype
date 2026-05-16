@@ -1,0 +1,17 @@
+#!/bin/bash
+
+# SolverForge Linux — Waybar module: voxtype status if available.
+
+voxtype_bin="${VOXTYPE_BIN:-voxtype}"
+
+if [[ "$voxtype_bin" == */* ]]; then
+  if [[ ! -x "$voxtype_bin" ]]; then
+    printf '{"text":"","class":"missing"}\n'
+    exit 0
+  fi
+elif ! command -v "$voxtype_bin" &>/dev/null; then
+  printf '{"text":"","class":"missing"}\n'
+  exit 0
+fi
+
+exec "$voxtype_bin" status --follow --format json

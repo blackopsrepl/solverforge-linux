@@ -1,0 +1,48 @@
+#!/bin/bash
+
+# SolverForge — Remove a user-installed TUI app.
+
+[[ ":$PATH:" != *":$HOME/.local/share/solverforge/bin:"* ]] && export PATH="$HOME/.local/share/solverforge/bin:$PATH"
+
+TUI_DIR="$HOME/.config/solverforge/tui-apps"
+
+read_conf_value() {
+  local file="$1" key="$2"
+  awk -F= -v key="$key" '$1 == key { sub(/^[^=]*=/, "", $0); print; exit }' "$file"
+}
+
+if [[ ! -d "$TUI_DIR" ]] || [[ -z "$(ls -A "$TUI_DIR" 2>/dev/null)" ]]; then
+  echo "No user TUI apps installed."
+  exit 0
+fi
+
+# Build list of installed TUI apps
+entries=()
+for conf in "$TUI_DIR"/*.conf; do
+  [[ -f "$conf" ]] || continue
+  name=$(read_conf_value "$conf" name)
+  icon=$(read_conf_value "$conf" icon)
+  entries+=("$icon  $name  ($(basename "$conf" .conf))")
+done
+
+if [[ ${#entries[@]} -eq 0 ]]; then
+  echo "No user TUI apps installed."
+  exit 0
+fi
+
+selected=$(printf '%s\n' "${entries[@]}" | fzf --prompt="Remove> " --reverse --header="Select TUI app to remove")
+[[ -z "$selected" ]] && { echo "Cancelled."; exit 0; }
+
+# Extract slug from parentheses at end
+slug=$(echo "$selected" | grep -oP '\(([^)]+)\)' | tr -d '()')
+conf_file="$TUI_DIR/${slug}.conf"
+
+if [[ -f "$conf_file" ]]; then
+  name=$(read_conf_value "$conf_file" name)
+  icon=$(read_conf_value "$conf_file" icon)
+  rm "$conf_file"
+  echo "Removed: $icon $name"
+else
+  echo "Error: Config not found: $conf_file"
+  exit 1
+fi

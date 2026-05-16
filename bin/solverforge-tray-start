@@ -1,0 +1,89 @@
+#!/bin/bash
+set -euo pipefail
+
+log_dir="${XDG_STATE_HOME:-$HOME/.local/state}/solverforge"
+log_file="${log_dir}/tray-start.log"
+mkdir -p "$log_dir"
+
+log() {
+  printf '%s %s\n' "$(date --iso-8601=seconds)" "$*" >>"$log_file"
+}
+
+if ! solverforge-wait-statusnotifier; then
+  log "status notifier watcher was not ready before starting xembedsniproxy"
+fi
+
+if ! command -v xembedsniproxy >/dev/null 2>&1; then
+  log "xembedsniproxy is not installed"
+  exit 0
+fi
+
+move_xembed_container_offscreen() {
+  python3 <<'PY' >>"$log_file" 2>&1 || true
+import time
+
+from Xlib import X, display
+from Xlib.error import BadWindow
+
+
+def move_matching_windows():
+    d = display.Display()
+    root = d.screen().root
+    opacity_atom = d.intern_atom("_NET_WM_WINDOW_OPACITY")
+    moved = []
+
+    for window in root.query_tree().children:
+        try:
+            geometry = window.get_geometry()
+            attributes = window.get_attributes()
+        except BadWindow:
+            continue
+
+        if attributes.map_state != X.IsViewable:
+            continue
+        if not attributes.override_redirect:
+            continue
+        if geometry.x != 0 or geometry.y != 0:
+            continue
+        if geometry.width > 64 or geometry.height > 64:
+            continue
+
+        try:
+            name = window.get_wm_name()
+        except BadWindow:
+            continue
+
+        try:
+            wm_class = window.get_wm_class()
+        except BadWindow:
+            continue
+
+        opacity = window.get_full_property(opacity_atom, X.AnyPropertyType)
+        if name is None and wm_class is None and opacity and list(opacity.value) == [0]:
+            window.configure(x=-100, y=-100)
+            moved.append(hex(window.id))
+
+    if moved:
+        d.sync()
+        print("moved xembedsniproxy tray container offscreen: " + ", ".join(moved))
+        return True
+
+    return False
+
+
+for _ in range(30):
+    if move_matching_windows():
+        break
+    time.sleep(0.1)
+PY
+}
+
+pkill -x xembedsniproxy 2>/dev/null || true
+sleep 0.2
+log "starting xembedsniproxy"
+xembedsniproxy &
+proxy_pid=$!
+
+trap 'kill "$proxy_pid" 2>/dev/null || true' EXIT INT TERM
+move_xembed_container_offscreen
+wait "$proxy_pid"

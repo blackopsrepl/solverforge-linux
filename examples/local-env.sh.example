@@ -1,0 +1,12 @@
+# Personal environment overrides for SolverForge.
+# Copy to ~/.config/solverforge/local-env.sh and edit locally.
+
+export PATH="$HOME/.cargo/bin:$HOME/go/bin:$PATH"
+export EDITOR="nvim"
+export BROWSER="zen"
+export VOXTYPE_BIN="$HOME/.cargo/bin/voxtype"
+export SOLVERFORGE_CARGO_SWEEP_ROOT="$HOME/src"
+export SOLVERFORGE_CARGO_SWEEP_DAYS="3"
+export SOLVERFORGE_SCREENSAVER_BIN="$HOME/.cargo/bin/solverforge-screensaver"
+export SOLVERFORGE_MAIL_BIN="$HOME/.cargo/bin/solverforge-mail"
+export SOLVERFORGE_CALENDAR_BIN="$HOME/.cargo/bin/solverforge-calendar"

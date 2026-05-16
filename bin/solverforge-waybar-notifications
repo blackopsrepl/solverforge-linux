@@ -1,0 +1,24 @@
+#!/bin/bash
+
+# SolverForge — Waybar module: SwayNC notification indicator.
+# Bell icon pulses/glows when notifications exist.
+# Click toggles panel, right-click clears all.
+
+if ! command -v swaync-client &>/dev/null; then
+    exit 0
+fi
+
+# U+F009A = md bell, U+F009B = md bell off
+bell=$'\xf3\xb0\x82\x9a'
+bell_off=$'\xf3\xb0\x82\x9b'
+
+count=$(swaync-client -c 2>/dev/null)
+dnd=$(swaync-client -D 2>/dev/null)
+
+if [[ "$dnd" == "true" ]]; then
+    echo "{\"text\": \"${bell_off}\", \"tooltip\": \"Do Not Disturb\", \"class\": \"dnd\"}"
+elif [[ "$count" -eq 0 ]]; then
+    echo "{\"text\": \"${bell}\", \"tooltip\": \"No notifications\", \"class\": \"empty\"}"
+else
+    echo "{\"text\": \"${bell}\", \"tooltip\": \"${count} notification$([ "$count" -eq 1 ] || echo 's')\", \"class\": \"active\"}"
+fi

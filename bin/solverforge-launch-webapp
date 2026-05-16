@@ -1,0 +1,12 @@
+#!/bin/bash
+
+# SolverForge — Launch a URL as a chromeless single-site window.
+# Uses a Chromium-compatible browser's --app flag for a true chromeless experience.
+
+url="$1"
+[[ -z "$url" ]] && { echo "Usage: solverforge-launch-webapp <url>" >&2; exit 1; }
+
+browser="${BROWSER:-chromium}"
+command -v "$browser" &>/dev/null || { echo "Browser not found: $browser" >&2; exit 1; }
+
+setsid "$browser" --app="$url" --force-device-scale-factor=0.9 "${@:2}" &>/dev/null &

@@ -1,0 +1,30 @@
+#!/bin/bash
+
+# SolverForge — Focus an existing window matching a pattern, or launch a new one.
+
+if (($# == 0)); then
+  echo "Usage: solverforge-launch-or-focus <window-pattern> [launch-command]" >&2
+  exit 1
+fi
+
+WINDOW_PATTERN="$1"
+LAUNCH_COMMAND="${2:-$1}"
+
+CON_ID=$(swaymsg -t get_tree | jq -r \
+  --arg p "$WINDOW_PATTERN" \
+  '.. | select(.type?) | select(
+    (.app_id // "" | test($p; "i")) or
+    (.window_properties?.class // "" | test($p; "i")) or
+    (.name // "" | test($p; "i"))
+  ) | .id' 2>/dev/null | head -n1)
+
+if [[ -n "$CON_ID" ]]; then
+  swaymsg "[con_id=$CON_ID] focus"
+else
+  if [[ $# -gt 1 ]]; then
+    shift
+    setsid "$@" &>/dev/null &
+  else
+    setsid bash -lc "$LAUNCH_COMMAND" &>/dev/null &
+  fi
+fi

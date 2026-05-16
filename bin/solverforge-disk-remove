@@ -1,0 +1,37 @@
+#!/bin/bash
+
+# SolverForge — Remove a disk-installed app (.desktop entry).
+
+SOLVERFORGE_PATH="${SOLVERFORGE_PATH:-$HOME/.local/share/solverforge}"
+
+desktop_dir="$HOME/.local/share/applications"
+entries=$(find "$desktop_dir" -maxdepth 1 -name 'disk-*.desktop' -printf '%f\n' 2>/dev/null | sort)
+
+if [[ -z "$entries" ]]; then
+  echo "No disk-installed apps found."
+  exit 0
+fi
+
+# Build display list: icon+name from each .desktop file
+choices=()
+files=()
+while IFS= read -r entry; do
+  file="$desktop_dir/$entry"
+  name=$(grep '^Name=' "$file" | head -1 | cut -d= -f2-)
+  [[ -n "$name" ]] || name="$entry"
+  choices+=("$name")
+  files+=("$file")
+done <<< "$entries"
+
+selected=$(printf '%s\n' "${choices[@]}" | fzf --reverse --header="Select disk app to remove (ESC to cancel)")
+[[ -z "$selected" ]] && { echo "Cancelled."; exit 0; }
+
+# Find and remove the matching .desktop file
+for i in "${!choices[@]}"; do
+  if [[ "${choices[$i]}" == "$selected" ]]; then
+    rm -f "${files[$i]}"
+    echo "Removed: $selected"
+    echo "Deleted: ${files[$i]}"
+    break
+  fi
+done

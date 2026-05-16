@@ -1,0 +1,28 @@
+#!/bin/bash
+
+# SolverForge — Waybar module: Podman container count.
+# Bar shows total running (user + root). Tooltip shows breakdown.
+
+if ! command -v podman &>/dev/null; then
+    exit 0
+fi
+
+icon="󰡨"
+
+user_count=$(podman ps -q 2>/dev/null | wc -l)
+root_count=$(sudo podman ps -q 2>/dev/null | wc -l)
+total=$((user_count + root_count))
+
+user_names=$(podman ps --format '{{.Names}}' 2>/dev/null | awk '{printf "%s\\n", $0}' | paste -sd '' | sed 's/\\n$//')
+root_names=$(sudo podman ps --format '{{.Names}}' 2>/dev/null | awk '{printf "%s\\n", $0}' | paste -sd '' | sed 's/\\n$//')
+
+tip="User: ${user_count} running"
+[[ -n "$user_names" ]] && tip="${tip}\\n${user_names}"
+tip="${tip}\\nRoot: ${root_count} running"
+[[ -n "$root_names" ]] && tip="${tip}\\n${root_names}"
+
+if [[ "$total" -eq 0 ]]; then
+    echo "{\"text\": \"\", \"tooltip\": \"Podman: no running containers\", \"class\": \"empty\"}"
+else
+    echo "{\"text\": \"${icon}  ${total}\", \"tooltip\": \"${tip}\", \"class\": \"\"}"
+fi

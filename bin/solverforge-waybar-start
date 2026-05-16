@@ -1,0 +1,73 @@
+#!/bin/bash
+set -euo pipefail
+
+log_dir="${XDG_STATE_HOME:-$HOME/.local/state}/solverforge"
+log_file="${log_dir}/waybar-start.log"
+mkdir -p "$log_dir"
+
+log() {
+  printf '%s %s\n' "$(date --iso-8601=seconds)" "$*" >>"$log_file"
+}
+
+wait_for_sway() {
+  for _ in {1..50}; do
+    if swaymsg -t get_outputs >/dev/null 2>&1; then
+      return 0
+    fi
+    sleep 0.1
+  done
+
+  return 1
+}
+
+wait_for_wayland_socket() {
+  local display="${WAYLAND_DISPLAY:-}"
+
+  if [[ -z "$display" || "$display" == /* ]]; then
+    return 0
+  fi
+
+  for _ in {1..50}; do
+    if [[ -S "${XDG_RUNTIME_DIR:-}/$display" ]]; then
+      return 0
+    fi
+    sleep 0.1
+  done
+
+  return 1
+}
+
+if ! wait_for_sway; then
+  log "sway IPC was not ready before starting waybar"
+fi
+
+if ! wait_for_wayland_socket; then
+  log "Wayland socket was not ready before starting waybar"
+fi
+
+pkill -x waybar 2>/dev/null || true
+for _ in {1..30}; do
+  if ! pgrep -x waybar >/dev/null 2>&1; then
+    break
+  fi
+  sleep 0.1
+done
+
+for attempt in {1..5}; do
+  log "starting waybar attempt=${attempt}"
+  set +e
+  env -u 'BASH_FUNC_mc%%' waybar
+  status=$?
+  set -e
+
+  if [[ "$status" -eq 0 || "$status" -eq 130 || "$status" -eq 143 ]]; then
+    log "waybar exited status=${status}"
+    exit "$status"
+  fi
+
+  log "waybar failed status=${status}"
+  sleep 1
+done
+
+log "waybar failed after retries"
+exit 1

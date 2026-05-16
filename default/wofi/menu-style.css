@@ -1,0 +1,56 @@
+/* SolverForge menu style — hackerman theme */
+
+window {
+    border: 2px solid rgba(130, 251, 156, 0.6);
+    border-radius: 3px;
+    background-color: rgba(11, 12, 22, 0.95);
+    font-family: "Fira Code", "FiraCode Nerd Font", monospace;
+}
+
+#outer-box {
+    margin: 0;
+    padding: 108px 8px 8px 8px;
+    background-image: url("@@SOLVERFORGE_PATH@@/default/wofi/banner.svg");
+    background-repeat: no-repeat;
+    background-position: top center;
+    background-size: 520px 100px;
+}
+
+#input {
+    color: #82FB9C;
+    border: none;
+    border-bottom: 2px solid rgba(130, 251, 156, 0.4);
+    border-radius: 0;
+    background-color: transparent;
+    font-size: 16px;
+    padding: 10px 14px;
+    margin: 0;
+}
+
+#input:focus {
+    border-bottom: 2px solid #82FB9C;
+}
+
+#scroll {
+    margin: 4px 0;
+    font-size: 15px;
+    color: #ddf7ff;
+}
+
+#text {
+    padding: 0;
+    margin: 0;
+}
+
+#entry {
+    padding: 8px 12px;
+    margin: 2px 0;
+    border-radius: 3px;
+    transition: all 0.1s ease;
+}
+
+#entry:selected {
+    color: #82FB9C;
+    background-color: rgba(130, 251, 156, 0.12);
+    border: 1px solid rgba(130, 251, 156, 0.4);
+}

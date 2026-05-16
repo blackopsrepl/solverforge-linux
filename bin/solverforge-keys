@@ -1,0 +1,74 @@
+#!/bin/bash
+
+# SolverForge — Show all Sway keybindings.
+# Usage: solverforge-keys          (scrollable in terminal via less)
+#        solverforge-keys --dmenu   (searchable in wofi)
+
+SOLVERFORGE_PATH="${SOLVERFORGE_PATH:-$HOME/.local/share/solverforge}"
+
+read -r -d '' BINDINGS <<'EOF'
+SUPER + Space           App launcher (wofi)
+SUPER + D               Toggle focus tiling/floating
+SUPER + A               Focus parent container
+SUPER + Z               Focus child container
+SUPER + C               Copy (universal)
+SUPER + V               Paste (universal)
+SUPER + X               Cut (universal)
+SUPER + Shift+Q         Kill focused window
+SUPER + F               Fullscreen
+SUPER + Shift+Space     Toggle floating
+SUPER + G               Toggle wayscriber overlay
+SUPER + Arrows          Focus left/down/up/right
+SUPER + Shift+Arrows    Move window left/down/up/right
+SUPER + K               Keybindings (this)
+SUPER + Shift+K         Toggle keystroke overlay (OBS)
+SUPER + \               Split horizontal
+SUPER + -               Split vertical
+SUPER + W               Tabbed layout
+SUPER + Shift+W         Stacking layout
+SUPER + E               Toggle split layout
+SUPER + S               Show scratchpad
+SUPER + Shift+S         Move to scratchpad
+SUPER + 1-0             Switch to workspace 1-10
+SUPER + Shift+1-0       Move to workspace 1-10
+SUPER + Tab             Next workspace
+SUPER + Shift+Tab       Previous workspace
+SUPER + R               Enter resize mode
+SUPER + Return          Terminal (kitty)
+SUPER + Shift+B         Browser
+SUPER + Shift+M         Emacs
+SUPER + Shift+N         Notification center
+SUPER + Alt+Space       Main menu
+SUPER + Escape          System menu
+SUPER + Shift+?         Keybindings in terminal
+SUPER + Print           Screenshot mode
+SUPER + Shift+E         System mode (lock/logout/reboot)
+SUPER + Shift+C         Reload Sway config
+SUPER + Alt+K           Cycle keyboard layout
+XF86AudioRaiseVolume    Volume up
+XF86AudioLowerVolume    Volume down
+XF86AudioMute           Mute toggle
+XF86AudioMicMute        Mic mute toggle
+XF86MonBrightnessUp     Brightness up
+XF86MonBrightnessDown   Brightness down
+SUPER + ScrollLock      Voice typing (hold to record)
+XF86AudioPlay           Play / Pause
+XF86AudioNext           Next track
+XF86AudioPrev           Previous track
+
+── Terminal (zsh) ──────────────────────────
+CTRL + T                Trex
+CTRL + S                Fuzzy file search (fzf)
+CTRL + F                Yazi file manager
+CTRL + ALT + F          Midnight Commander
+CTRL + E                Mail (solverforge-mail)
+CTRL + Y                Calendar (solverforge-calendar)
+EOF
+
+if [[ "$1" == "--dmenu" ]]; then
+  echo "$BINDINGS" | wofi --dmenu --insensitive --width 600 --lines 20 \
+    --cache-file /dev/null --style "$SOLVERFORGE_PATH/default/wofi/menu-style.css" \
+    -p "Keybindings" 2>/dev/null
+else
+  echo "$BINDINGS" | less
+fi

@@ -1,0 +1,10 @@
+# SolverForge — Bash keybindings
+
+# Disable XON/XOFF flow control so Ctrl+S is available for binding
+stty -ixon 2>/dev/null
+
+# Ctrl+S: fuzzy file search from current directory
+bind -x '"\C-s": "fzf"' 2>/dev/null
+
+# Ctrl+T: trex
+bind -x '"\C-t": "trex"' 2>/dev/null

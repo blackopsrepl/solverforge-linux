@@ -1,0 +1,34 @@
+#!/bin/bash
+
+# SolverForge — Waybar module: active power profile indicator.
+
+if ! command -v powerprofilesctl &>/dev/null; then
+    exit 0
+fi
+
+profile=$(powerprofilesctl get 2>/dev/null)
+
+case "$profile" in
+performance)
+    text="󰓅"
+    tooltip="Power profile: Performance"
+    class="performance"
+    ;;
+balanced)
+    text="󰾅"
+    tooltip="Power profile: Balanced"
+    class="balanced"
+    ;;
+power-saver)
+    text="󰾆"
+    tooltip="Power profile: Power Saver"
+    class="power-saver"
+    ;;
+*)
+    text="󰾅"
+    tooltip="Power profile: ${profile:-unknown}"
+    class="unknown"
+    ;;
+esac
+
+printf '{"text":"%s","tooltip":"%s","class":"%s"}\n' "$text" "$tooltip" "$class"

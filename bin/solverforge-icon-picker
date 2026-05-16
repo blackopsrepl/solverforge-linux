@@ -1,0 +1,29 @@
+#!/bin/bash
+
+# SolverForge — Browse and pick from the entire Nerd Font icon set (10,764 icons).
+# Returns the selected icon character to stdout.
+# Usage:
+#   icon=$(solverforge-icon-picker)
+#   icon=$(solverforge-icon-picker "prompt text")
+
+SOLVERFORGE_PATH="${SOLVERFORGE_PATH:-$HOME/.local/share/solverforge}"
+ICONS_FILE="$SOLVERFORGE_PATH/default/nerd-icons.txt"
+
+if [[ ! -f "$ICONS_FILE" ]]; then
+  echo "Error: Icon database not found at $ICONS_FILE" >&2
+  exit 1
+fi
+
+prompt="${1:-Icon}"
+
+selected=$(fzf --prompt="$prompt> " --reverse --height=100% \
+  --preview-window=hidden \
+  --header="Type to search 10,764 Nerd Font icons" \
+  --header-first \
+  < "$ICONS_FILE")
+
+[[ -z "$selected" ]] && exit 1
+
+# Extract just the icon character (everything before the double space)
+icon="${selected%%  *}"
+echo "$icon"

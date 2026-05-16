@@ -1,0 +1,7 @@
+*.db
+__pycache__/
+.claude/
+default/theme/generated/
+mail/
+default/qbittorrent/
+qbittorrent/

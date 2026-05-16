@@ -1,0 +1,26 @@
+#!/usr/bin/env python3
+"""SolverForge autotiling daemon — dwindle/spiral layout for sway."""
+
+import i3ipc
+
+def on_window(i3, event):
+    con = i3.get_tree().find_focused()
+    if con is None or con.parent is None:
+        return
+    if con.floating or con.fullscreen_mode:
+        return
+    if con.parent.layout in ("tabbed", "stacked"):
+        return
+
+    if con.rect.width >= con.rect.height:
+        new_layout = "splitv"
+    else:
+        new_layout = "splith"
+
+    if con.parent.layout != new_layout:
+        i3.command(new_layout)
+
+i3 = i3ipc.Connection()
+i3.on("window::focus", on_window)
+i3.on("window::new", on_window)
+i3.main()

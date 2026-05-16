@@ -1,0 +1,11 @@
+#!/bin/bash
+
+# SolverForge — Waybar module: zypper pending update count.
+
+count=$(zypper --quiet lu 2>/dev/null | grep -c 'v *|')
+
+if [[ "$count" -eq 0 ]]; then
+    echo '{"text": "", "tooltip": "System is up to date", "class": "uptodate"}'
+else
+    echo "{\"text\": \"󰏕 ${count}\", \"tooltip\": \"${count} packages to update\", \"class\": \"pending\"}"
+fi

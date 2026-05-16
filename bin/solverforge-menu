@@ -1,0 +1,333 @@
+#!/bin/bash
+
+# SolverForge — Hierarchical system menu using wofi --dmenu.
+
+[[ ":$PATH:" != *":$HOME/.local/share/solverforge/bin:"* ]] && export PATH="$HOME/.local/share/solverforge/bin:$PATH"
+
+SOLVERFORGE_PATH="${SOLVERFORGE_PATH:-$HOME/.local/share/solverforge}"
+TUI_DIR="$HOME/.config/solverforge/tui-apps"
+BACK_TO_EXIT=false
+POWER_PROFILE_RECOVERED=false
+
+# --- Resolve runtime tools once ---
+LOLCAT=$(command -v lolcat 2>/dev/null || compgen -c lolcat. | head -1)
+default_lock_config="$SOLVERFORGE_PATH/default/theme/generated/swaylock.conf"
+SWAYLOCK_CONFIG="${SWAYLOCK_CONFIG:-$default_lock_config}"
+if [[ ! -f "$SWAYLOCK_CONFIG" ]]; then
+  SWAYLOCK_CONFIG="/etc/swaylock/openSUSEway.conf"
+fi
+
+# --- Materialize CSS (replace @@SOLVERFORGE_PATH@@ placeholder) ---
+_css_template="$SOLVERFORGE_PATH/default/wofi/menu-style.css"
+_css_cache="${XDG_RUNTIME_DIR:-/tmp}/solverforge-menu-style.css"
+if [[ "$_css_template" -nt "$_css_cache" ]] || [[ ! -f "$_css_cache" ]]; then
+  while IFS= read -r line; do
+    printf '%s\n' "${line//@@SOLVERFORGE_PATH@@/$SOLVERFORGE_PATH}"
+  done < "$_css_template" > "$_css_cache"
+fi
+
+back_to() {
+  if [[ "$BACK_TO_EXIT" == "true" ]]; then
+    exit 0
+  elif [[ -n "$1" ]]; then
+    "$1"
+  else
+    show_main_menu
+  fi
+}
+
+menu() {
+  local prompt="$1"
+  local options="$2"
+  echo -e "$options" | wofi --dmenu --insensitive --width 520 --lines 12 \
+    --location 0 \
+    --cache-file /dev/null --style "$_css_cache" \
+    -p "$prompt" 2>/dev/null
+}
+
+float_term() {
+  setsid kitty --app-id sway-float -e bash -c "$1; echo; read -rp 'Press enter to close...'" &>/dev/null &
+}
+
+float_interactive() {
+  setsid kitty --app-id sway-float -e bash -c "$1" &>/dev/null &
+}
+
+open_in_editor() {
+  local file="$1"
+  local editor="${EDITOR:-nvim}"
+  setsid kitty --app-id sway-float -e "$editor" "$file" &>/dev/null &
+}
+
+power_profile_label() {
+  case "$1" in
+  performance) printf '󰓅  Performance' ;;
+  balanced) printf '󰾅  Balanced' ;;
+  power-saver) printf '󰾆  Power Saver' ;;
+  *) printf '%s' "$1" ;;
+  esac
+}
+
+power_profile_name() {
+  case "$1" in
+  performance) printf 'Performance' ;;
+  balanced) printf 'Balanced' ;;
+  power-saver) printf 'Power Saver' ;;
+  *) printf '%s' "$1" ;;
+  esac
+}
+
+switch_power_profile() {
+  local target="$1"
+  local err=""
+  POWER_PROFILE_RECOVERED=false
+
+  err=$(powerprofilesctl set "$target" 2>&1) && return 0
+
+  if command -v sudo &>/dev/null && sudo -n systemctl restart power-profiles-daemon &>/dev/null; then
+    err=$(powerprofilesctl set "$target" 2>&1) && {
+      POWER_PROFILE_RECOVERED=true
+      return 0
+    }
+  fi
+
+  printf '%s\n' "$err" >&2
+  return 1
+}
+
+show_power_menu() {
+  if ! command -v powerprofilesctl &>/dev/null; then
+    notify-send "SolverForge" "powerprofilesctl is not installed" 2>/dev/null
+    back_to show_main_menu
+    return
+  fi
+
+  local current choice target
+  current=$(powerprofilesctl get 2>/dev/null)
+  choice=$(menu "Power Profile" "$(printf '%s\n%s\n%s' \
+    "$(power_profile_label performance)$( [[ "$current" == "performance" ]] && printf '  • active' )" \
+    "$(power_profile_label balanced)$( [[ "$current" == "balanced" ]] && printf '  • active' )" \
+    "$(power_profile_label power-saver)$( [[ "$current" == "power-saver" ]] && printf '  • active' )")")
+  [[ -z "$choice" ]] && { back_to show_main_menu; return; }
+
+  case "$choice" in
+  *Performance*) target="performance" ;;
+  *Balanced*) target="balanced" ;;
+  *"Power Saver"*) target="power-saver" ;;
+  *) back_to show_main_menu; return ;;
+  esac
+
+  local err_file err_detail=""
+  err_file=$(mktemp)
+  if switch_power_profile "$target" 2>"$err_file"; then
+    if [[ "$POWER_PROFILE_RECOVERED" == "true" ]]; then
+      notify-send "Power profile" "$(power_profile_name "$target") enabled after daemon restart" 2>/dev/null
+    else
+      notify-send "Power profile" "$(power_profile_name "$target") enabled" 2>/dev/null
+    fi
+  else
+    err_detail=$(<"$err_file")
+    err_detail=${err_detail##*$'\n'}
+    [[ -z "$err_detail" ]] && err_detail="Unknown error"
+    notify-send "Power profile" "Failed to switch to $(power_profile_name "$target"): $err_detail" 2>/dev/null
+  fi
+  rm -f "$err_file"
+
+  back_to show_main_menu
+}
+
+show_learn_menu() {
+  solverforge-keys --dmenu
+}
+
+show_capture_menu() {
+  case $(menu "Capture" "󰹑  Screenshot\n󰉦  Color Picker") in
+  *Screenshot*) show_screenshot_menu ;;
+  *Color*)
+    local px
+    px=$(grim -g "$(slurp -p)" -t ppm -)
+    if command -v magick &>/dev/null; then
+      echo "$px" | magick - -format '%[pixel:p{0,0}]' txt:- | tail -1 | cut -d' ' -f4 | wl-copy
+    elif command -v convert &>/dev/null; then
+      echo "$px" | convert - -format '%[pixel:p{0,0}]' txt:- | tail -1 | cut -d' ' -f4 | wl-copy
+    else
+      notify-send "SolverForge" "ImageMagick not installed — cannot pick color" 2>/dev/null
+      return
+    fi
+    notify-send "Color copied to clipboard" 2>/dev/null
+    ;;
+  *) back_to show_main_menu ;;
+  esac
+}
+
+show_screenshot_menu() {
+  case $(menu "Screenshot" "󰩬  Area → Save\n󰰕  Area → Clipboard\n󰍹  Full Screen → Save\n󰊓  Full Screen → Clipboard") in
+  *"Area"*Save*) grim -g "$(slurp)" ;;
+  *"Area"*Clipboard*) grim -g "$(slurp)" - | wl-copy ;;
+  *"Full"*Save*) grim ;;
+  *"Full"*Clipboard*) grim - | wl-copy ;;
+  *) show_capture_menu ;;
+  esac
+}
+
+show_toggle_menu() {
+  case $(menu "Toggle" "󰍜  Waybar\n󰌌  Show Keys") in
+  *Waybar*) killall -SIGUSR1 waybar 2>/dev/null || setsid waybar &>/dev/null & ;;
+  *"Show Keys"*) solverforge-showkeys toggle ;;
+  *) back_to show_main_menu ;;
+  esac
+}
+
+show_tui_menu() {
+  # Built-in TUI apps
+  local entries="󰙅  Yazi\n󰌌  Keybindings\n󰤥  Wifi (nmtui)\n󰂯  Bluetooth\n󰋊  Disk Usage\n󰄧  Btop\n  LazyVim\n󰄀  iPhone Camera\n  Mail\n󰃭  Calendar"
+
+  # Load user-installed TUI apps from config
+  local user_cmds=()
+  if [[ -d "$TUI_DIR" ]]; then
+    for conf in "$TUI_DIR"/*.conf; do
+      [[ -f "$conf" ]] || continue
+      local t_name="" t_cmd="" t_icon="" t_interactive=""
+      while IFS='=' read -r key val; do
+        case "$key" in
+          name) t_name="$val" ;;
+          cmd) t_cmd="$val" ;;
+          icon) t_icon="$val" ;;
+          interactive) t_interactive="$val" ;;
+        esac
+      done < "$conf"
+      [[ -n "$t_name" && -n "$t_cmd" ]] || continue
+      entries="$entries\n${t_icon:-}  $t_name"
+      user_cmds+=("$t_name|$t_cmd|$t_interactive")
+    done
+  fi
+
+  local choice
+  choice=$(menu "TUI Apps" "$entries")
+  [[ -z "$choice" ]] && { back_to show_main_menu; return; }
+
+  # Check built-in entries first
+  case "$choice" in
+  *Yazi*) float_interactive "yazi"; return ;;
+  *Keybindings*) setsid kitty --app-id sway-float -e solverforge-keys &>/dev/null & return ;;
+  *Wifi*) float_term "nmtui"; return ;;
+  *Bluetooth*) float_term "bluetoothctl"; return ;;
+  *"Disk Usage"*) float_term "df -h"; return ;;
+  *Btop*) float_interactive "btop"; return ;;
+  *LazyVim*) float_interactive "nvim"; return ;;
+  *"iPhone Camera"*) float_interactive "solverforge-iphone-cam"; return ;;
+  *Mail*) float_interactive "solverforge-mail"; return ;;
+  *Calendar*) float_interactive "solverforge-calendar"; return ;;
+  esac
+
+  # Check user-installed TUI apps
+  for entry in "${user_cmds[@]}"; do
+    local t_name="${entry%%|*}"
+    local rest="${entry#*|}"
+    local t_cmd="${rest%%|*}"
+    local t_interactive="${rest##*|}"
+    if [[ "$choice" == *"$t_name"* ]]; then
+      if [[ "$t_interactive" == "true" ]]; then
+        float_interactive "$t_cmd"
+      else
+        float_term "$t_cmd"
+      fi
+      return
+    fi
+  done
+}
+
+show_setup_menu() {
+  case $(menu "Setup" "󰕾  Audio\n󰍹  Monitors\n󰌌  Keybindings\n󰁯  Backup\n󰏗  Menu Extensions\n󰒓  SolverForge\n  LazyVim Config") in
+  *Audio*) setsid pavucontrol &>/dev/null & ;;
+  *Monitors*) open_in_editor "$SOLVERFORGE_PATH/default/sway/output.conf" ;;
+  *Keybindings*) open_in_editor "$SOLVERFORGE_PATH/default/sway/bindings.conf" ;;
+  *Backup*) open_in_editor "$HOME/.config/solverforge/backup.conf" ;;
+  *"Menu Extensions"*) open_in_editor "$HOME/.config/solverforge/extensions/menu.sh" ;;
+  *SolverForge*) open_in_editor "$HOME/.config/sway/config.d/solverforge.conf" ;;
+  *"LazyVim Config"*) float_interactive "nvim $HOME/.config/nvim/lua/plugins/"; return ;;
+  *) show_main_menu ;;
+  esac
+}
+
+show_install_menu() {
+  case $(menu "Install" "  openSUSE Package\n󰖟  Web App\n  TUI App\n󰉋  Disk App\n  LazyVim\n󰄀  iPhone Camera") in
+  *Package*) float_term "solverforge-pkg-install" ;;
+  *Web*) float_term "solverforge-webapp-install" ;;
+  *TUI*) float_term "solverforge-tui-install" ;;
+  *Disk*) float_term "solverforge-disk-install" ;;
+  *LazyVim*) float_term "solverforge-lazyvim-install" ;;
+  *) show_main_menu ;;
+  esac
+}
+
+show_remove_menu() {
+  case $(menu "Remove" "  openSUSE Package\n󰖟  Web App\n  TUI App\n󰉋  Disk App") in
+  *Package*) float_term "solverforge-pkg-remove" ;;
+  *"Web App"*) solverforge-webapp-remove ;;
+  *TUI*) float_term "solverforge-tui-remove" ;;
+  *Disk*) float_term "solverforge-disk-remove" ;;
+  *) show_main_menu ;;
+  esac
+}
+
+show_about() {
+  if [[ -n "$LOLCAT" ]]; then
+    setsid kitty --app-id sway-float \
+      -e bash -c "fastfetch | $LOLCAT --truecolor; echo; read -rp 'Press enter to close...'" &>/dev/null &
+  else
+    setsid kitty --app-id sway-float \
+      -e bash -c "fastfetch; echo; read -rp 'Press enter to close...'" &>/dev/null &
+  fi
+}
+
+show_system_menu() {
+  case $(menu "System" "󰓅  Power Profile\n  Lock\n󰒲  Suspend\n  Hibernate\n󰜉  Reboot\n󰐥  Shutdown") in
+  *"Power Profile"*) show_power_menu ;;
+  *Lock*) swaylock --config "$SWAYLOCK_CONFIG" ;;
+  *Suspend*) systemctl suspend ;;
+  *Hibernate*) systemctl hibernate ;;
+  *Reboot*) systemctl reboot ;;
+  *Shutdown*) systemctl poweroff ;;
+  *) back_to show_main_menu ;;
+  esac
+}
+
+show_main_menu() {
+  # Source user menu extensions if present
+  # shellcheck source=/dev/null
+  [[ -f "$HOME/.config/solverforge/extensions/menu.sh" ]] && source "$HOME/.config/solverforge/extensions/menu.sh"
+
+  case $(menu "Menu" "󰀻  Apps\n  TUI Apps\n󰧑  Learn\n󰹑  Capture\n󰔎  Toggle\n  Setup\n󰉉  Install\n󰭌  Remove\n󰋼  About\n⏻  System") in
+  *"TUI Apps"*) show_tui_menu ;;
+  *Apps*) wofi --show drun --width 520 --lines 12 --location 0 --cache-file /dev/null --style "$_css_cache" 2>/dev/null ;;
+  *Learn*) show_learn_menu ;;
+  *Capture*) show_capture_menu ;;
+  *Toggle*) show_toggle_menu ;;
+  *Setup*) show_setup_menu ;;
+  *Install*) show_install_menu ;;
+  *Remove*) show_remove_menu ;;
+  *About*) show_about ;;
+  *System*) show_system_menu ;;
+  esac
+}
+
+if [[ -n "$1" ]]; then
+  BACK_TO_EXIT=true
+  case "${1,,}" in
+  apps) wofi --show drun --width 520 --lines 12 --location 0 --cache-file /dev/null --style "$_css_cache" 2>/dev/null ;;
+  power) show_power_menu ;;
+  system) show_system_menu ;;
+  capture) show_capture_menu ;;
+  learn) show_learn_menu ;;
+  setup) show_setup_menu ;;
+  install) show_install_menu ;;
+  remove) show_remove_menu ;;
+  toggle) show_toggle_menu ;;
+  tui) show_tui_menu ;;
+  about) show_about ;;
+  *) show_main_menu ;;
+  esac
+else
+  show_main_menu
+fi

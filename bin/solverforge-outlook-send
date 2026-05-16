@@ -1,0 +1,88 @@
+#!/usr/bin/env python3
+"""
+SolverForge — Send email via Outlook SMTP using OAuth2 authentication.
+Compatible with Emacs message-send-mail-with-sendmail.
+"""
+
+import sys
+import smtplib
+from email.parser import BytesParser
+import subprocess
+from pathlib import Path
+import os
+
+SOLVERFORGE_PATH = os.environ.get(
+    "SOLVERFORGE_PATH",
+    os.path.join(os.path.expanduser("~"), ".local", "share", "solverforge"),
+)
+OAUTH_SCRIPT = os.path.join(SOLVERFORGE_PATH, "bin", "solverforge-mutt-oauth2")
+
+
+def get_oauth2_string(token_file):
+    """Get OAuth2 token from mutt_oauth2.py"""
+    token_file = os.path.expanduser(token_file)
+
+    # Prefer SolverForge-managed script, fall back to system mutt_oauth2.py
+    script = OAUTH_SCRIPT if os.path.isfile(OAUTH_SCRIPT) else "mutt_oauth2.py"
+
+    result = subprocess.run(
+        [script, token_file],
+        capture_output=True,
+        text=True,
+    )
+    if result.returncode != 0:
+        raise Exception(f"Failed to get OAuth2 token: {result.stderr}")
+    return result.stdout.strip()
+
+
+def send_mail():
+    # Read the email from stdin
+    msg_bytes = sys.stdin.buffer.read()
+    msg = BytesParser().parsebytes(msg_bytes)
+
+    # Extract sender and recipients
+    from_addr = msg["From"]
+    to_addrs = []
+
+    for header in ["To", "Cc", "Bcc"]:
+        if msg[header]:
+            to_addrs.extend([addr.strip() for addr in msg[header].split(",")])
+
+    if not to_addrs:
+        print("Error: No recipients found", file=sys.stderr)
+        sys.exit(1)
+
+    # Get OAuth2 token
+    token = get_oauth2_string("~/.outlook-token")
+
+    # Connect to Outlook SMTP with OAuth2
+    import email.utils
+    import base64
+
+    smtp = smtplib.SMTP("smtp-mail.outlook.com", 587)
+    smtp.set_debuglevel(0)
+    smtp.ehlo()
+    smtp.starttls()
+    smtp.ehlo()
+
+    # Authenticate with XOAUTH2 SASL
+    email_addr = email.utils.parseaddr(from_addr)[1]
+    auth_string = f"user={email_addr}\x01auth=Bearer {token}\x01\x01"
+    auth_b64 = base64.b64encode(auth_string.encode("utf-8")).decode("ascii")
+
+    code, resp = smtp.docmd("AUTH", f"XOAUTH2 {auth_b64}")
+    if code != 235:
+        raise Exception(f"SMTP AUTH failed: {code} {resp}")
+
+    smtp.sendmail(from_addr, to_addrs, msg_bytes)
+    smtp.quit()
+
+    print(f"Message sent successfully to {', '.join(to_addrs)}")
+
+
+if __name__ == "__main__":
+    try:
+        send_mail()
+    except Exception as e:
+        print(f"Error sending mail: {e}", file=sys.stderr)
+        sys.exit(1)

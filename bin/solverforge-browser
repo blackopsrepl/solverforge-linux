@@ -1,0 +1,34 @@
+#!/usr/bin/env bash
+
+# SolverForge — Browser launcher with resilient fallback resolution.
+
+args=()
+if (( $# >= 1 )); then
+  args=("$@")
+fi
+
+if [[ -n "${BROWSER-}" ]]; then
+  read -r -a browser_cmd <<< "$BROWSER"
+  if [[ -n "${browser_cmd[0]-}" ]] && command -v "${browser_cmd[0]}" &>/dev/null; then
+    exec "${browser_cmd[@]}" "${args[@]}"
+  fi
+fi
+
+if command -v zen &>/dev/null; then
+  exec zen "${args[@]}"
+fi
+
+if [[ -x /opt/zen/zen ]]; then
+  exec /opt/zen/zen "${args[@]}"
+fi
+
+if command -v firefox &>/dev/null; then
+  exec firefox "${args[@]}"
+fi
+
+if command -v google-chrome &>/dev/null; then
+  exec google-chrome "${args[@]}"
+fi
+
+notify-send "SolverForge" "No browser executable found. Install zen or another browser."
+exit 1

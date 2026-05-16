@@ -1,0 +1,18 @@
+#!/bin/bash
+set -euo pipefail
+
+resolved_bin=""
+
+if [[ -n "${SOLVERFORGE_MAIL_BIN:-}" && -x "${SOLVERFORGE_MAIL_BIN}" ]]; then
+  resolved_bin="${SOLVERFORGE_MAIL_BIN}"
+elif [[ -x "${HOME}/.cargo/bin/solverforge-mail" ]]; then
+  resolved_bin="${HOME}/.cargo/bin/solverforge-mail"
+fi
+
+if [[ -z "$resolved_bin" ]]; then
+  notify-send "SolverForge Linux mail unavailable" \
+    "Set SOLVERFORGE_MAIL_BIN or install solverforge-mail under ~/.cargo/bin."
+  exit 1
+fi
+
+exec "$resolved_bin" "$@"

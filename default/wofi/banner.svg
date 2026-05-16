@@ -1,0 +1,75 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="520" height="100" viewBox="0 0 520 100">
+  <defs>
+    <linearGradient id="copper" x1="0%" y1="0%" x2="100%" y2="0%">
+      <stop offset="0%" style="stop-color:#35b9ab;stop-opacity:0" />
+      <stop offset="15%" style="stop-color:#35b9ab;stop-opacity:0.8" />
+      <stop offset="50%" style="stop-color:#73ba25;stop-opacity:1" />
+      <stop offset="85%" style="stop-color:#35b9ab;stop-opacity:0.8" />
+      <stop offset="100%" style="stop-color:#35b9ab;stop-opacity:0" />
+    </linearGradient>
+    <linearGradient id="grad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#73ba25;stop-opacity:1" />
+      <stop offset="50%" style="stop-color:#35b9ab;stop-opacity:1" />
+      <stop offset="100%" style="stop-color:#73ba25;stop-opacity:1" />
+    </linearGradient>
+  </defs>
+
+  <!-- Top copper bar -->
+  <rect x="0" y="4" width="520" height="2" fill="url(#copper)"/>
+
+  <!-- Centered composition: logo + wordmark -->
+  <g transform="translate(132, 5)">
+    <!-- Hexagonal Ouroboros Symbol -->
+    <g transform="translate(33, 45) scale(0.5)">
+      <!-- Hexagonal outer body -->
+      <path d="M0 -70 L53 -35 L63 0 L53 53 L0 77 L-53 53 L-63 0 L-53 -35 Z"
+        stroke="url(#grad)" stroke-width="10" fill="none" stroke-linejoin="miter"/>
+
+      <!-- Angular snake head -->
+      <g transform="translate(0, -70)">
+        <path d="M0 0 L-9 -12 L-5 -6 L0 -10 L5 -6 L9 -12 Z"
+          fill="url(#grad)" stroke="none"/>
+        <circle cx="-3" cy="-8" r="1.5" fill="#173f4f"/>
+        <circle cx="3" cy="-8" r="1.5" fill="#173f4f"/>
+      </g>
+
+      <!-- Tail -->
+      <path d="M0 -70 L0 -47" stroke="url(#grad)" stroke-width="8"/>
+
+      <!-- Inner hexagon -->
+      <path d="M0 -35 L28 -18 L33 0 L28 28 L0 42 L-28 28 L-33 0 L-28 -18 Z"
+        stroke="#35b9ab" stroke-width="1.5" fill="none" opacity="0.2"/>
+
+      <!-- Geometric accent points -->
+      <circle cx="0" cy="-70" r="4" fill="#35b9ab" opacity="0.15"/>
+      <circle cx="53" cy="-35" r="4" fill="#35b9ab" opacity="0.15"/>
+      <circle cx="63" cy="0" r="4" fill="#35b9ab" opacity="0.15"/>
+      <circle cx="53" cy="53" r="4" fill="#35b9ab" opacity="0.15"/>
+      <circle cx="0" cy="77" r="4" fill="#35b9ab" opacity="0.15"/>
+      <circle cx="-53" cy="53" r="4" fill="#35b9ab" opacity="0.15"/>
+      <circle cx="-63" cy="0" r="4" fill="#35b9ab" opacity="0.15"/>
+      <circle cx="-53" cy="-35" r="4" fill="#35b9ab" opacity="0.15"/>
+
+      <!-- Center optimization node -->
+      <path d="M-18 0 L-7 0 M18 0 L7 0 M0 -18 L0 -7 M0 18 L0 7"
+        stroke="#35b9ab" stroke-width="2" stroke-linecap="round"/>
+      <circle cx="0" cy="0" r="5" fill="none" stroke="#35b9ab" stroke-width="2"/>
+      <circle cx="0" cy="0" r="2.5" fill="#73ba25"/>
+
+      <!-- Corner brackets -->
+      <path d="M-11 -11 L-14 -11 L-14 -14 M11 -11 L14 -11 L14 -14 M11 11 L14 11 L14 14 M-11 11 L-14 11 L-14 14"
+        stroke="#73ba25" stroke-width="1.5" stroke-linecap="round"/>
+    </g>
+
+    <!-- Wordmark -->
+    <text x="68" y="42" font-family="system-ui, -apple-system, sans-serif" font-size="28" font-weight="300" letter-spacing="-0.5">
+      <tspan fill="#35b9ab">Solver</tspan><tspan fill="#73ba25">Forge</tspan>
+    </text>
+    <text x="68" y="58" font-family="system-ui, -apple-system, sans-serif" font-size="9" font-weight="400" letter-spacing="3" fill="#35b9ab" opacity="0.6">
+      OPTIMIZATION SOFTWARE
+    </text>
+  </g>
+
+  <!-- Bottom copper bar -->
+  <rect x="0" y="94" width="520" height="2" fill="url(#copper)"/>
+</svg>

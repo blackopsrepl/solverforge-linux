@@ -1,0 +1,24 @@
+#!/bin/bash
+
+# SolverForge — Remove an installed web app.
+
+SOLVERFORGE_PATH="${SOLVERFORGE_PATH:-$HOME/.local/share/solverforge}"
+
+desktop_dir="$HOME/.local/share/applications"
+webapps=$(find "$desktop_dir" -name "webapp-*.desktop" -printf "%f\n" 2>/dev/null | while read -r f; do
+  grep -m1 "^Name=" "$desktop_dir/$f" | cut -d= -f2
+done)
+
+[[ -z "$webapps" ]] && { echo "No web apps installed."; exit 0; }
+
+selected=$(echo "$webapps" | wofi --dmenu -p "Remove web app" -i \
+  --style "$SOLVERFORGE_PATH/default/wofi/menu-style.css" --cache-file /dev/null 2>/dev/null)
+[[ -z "$selected" ]] && exit 0
+
+file=$(grep -rl "^Name=$selected$" "$desktop_dir"/webapp-*.desktop 2>/dev/null | head -1)
+if [[ -n "$file" ]]; then
+  rm "$file"
+  echo "Removed: $selected"
+else
+  echo "Not found: $selected" >&2
+fi

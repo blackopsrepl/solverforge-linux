@@ -1,0 +1,89 @@
+#!/bin/bash
+set -euo pipefail
+
+log_dir="${XDG_STATE_HOME:-$HOME/.local/state}/solverforge"
+log_file="${log_dir}/waybar-companions-start.log"
+lock_file="${log_dir}/waybar-companions-start.lock"
+mkdir -p "$log_dir"
+
+log() {
+  printf '%s %s\n' "$(date --iso-8601=seconds)" "$*" >>"$log_file"
+}
+
+resolve_command() {
+  local default_path="$1"
+  local command_name="$2"
+
+  if [[ -x "$default_path" ]]; then
+    printf '%s\n' "$default_path"
+    return 0
+  fi
+
+  command -v "$command_name" 2>/dev/null || true
+}
+
+wait_for_waybar() {
+  for _ in {1..100}; do
+    if pgrep -xu "$(id -u)" waybar >/dev/null 2>&1; then
+      return 0
+    fi
+    sleep 0.1
+  done
+
+  return 1
+}
+
+daemon_running() {
+  local match="$1"
+
+  pgrep -u "$(id -u)" -f "$match" >/dev/null 2>&1
+}
+
+start_daemon_if_missing() {
+  local name="$1"
+  local command_path="$2"
+  local config_path="$3"
+  local match="${name} daemon --config ${config_path}"
+
+  if [[ -z "$command_path" || ! -x "$command_path" ]]; then
+    log "${name} command is not available"
+    return 0
+  fi
+
+  if [[ ! -f "$config_path" ]]; then
+    log "${name} config is missing: ${config_path}"
+    return 0
+  fi
+
+  if daemon_running "$match"; then
+    return 0
+  fi
+
+  log "starting ${name} daemon"
+  setsid "$command_path" daemon --config "$config_path" >>"$log_file" 2>&1 &
+}
+
+exec 9>"$lock_file"
+if ! flock -n 9; then
+  exit 0
+fi
+
+codexbar_command="$(resolve_command "$HOME/.local/bin/codexbar" codexbar)"
+repobar_command="$(resolve_command "$HOME/.local/bin/repobar" repobar)"
+trexbar_command="$(resolve_command "$HOME/.local/bin/trexbar-sway" trexbar-sway)"
+
+codexbar_config="${CODEXBAR_CONFIG:-$HOME/.codexbar/config.json}"
+repobar_config="${REPOBAR_CONFIG:-$HOME/.repobar/config.json}"
+trexbar_config="${TREXBAR_SWAY_CONFIG:-$HOME/.config/trexbar-sway/config.json}"
+
+if ! wait_for_waybar; then
+  log "waybar was not running before starting companion daemons"
+fi
+
+log "monitoring waybar companion daemons"
+while true; do
+  start_daemon_if_missing codexbar "$codexbar_command" "$codexbar_config"
+  start_daemon_if_missing repobar "$repobar_command" "$repobar_config"
+  start_daemon_if_missing trexbar-sway "$trexbar_command" "$trexbar_config"
+  sleep 10
+done

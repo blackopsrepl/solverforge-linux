@@ -1,0 +1,69 @@
+#!/bin/bash
+
+# SolverForge — Install a local executable as a .desktop entry with Nerd Font icon selection.
+# Points to an existing binary on disk (e.g. /opt/AppName/app, ~/bin/tool).
+
+[[ ":$PATH:" != *":$HOME/.local/share/solverforge/bin:"* ]] && export PATH="$HOME/.local/share/solverforge/bin:$PATH"
+
+desktop_escape() {
+  printf '%s' "$1" | tr '\n\r' '  '
+}
+
+read -rp "App name: " name
+[[ -z "$name" ]] && { echo "Cancelled."; exit 1; }
+name=$(desktop_escape "$name")
+
+read -rp "Path to executable: " exe_path
+[[ -z "$exe_path" ]] && { echo "Cancelled."; exit 1; }
+
+# Expand ~ and resolve
+exe_path="${exe_path/#\~/$HOME}"
+
+if [[ ! -f "$exe_path" ]]; then
+  echo "Error: $exe_path does not exist."
+  exit 1
+fi
+
+if [[ ! -x "$exe_path" ]]; then
+  echo "Error: $exe_path is not executable."
+  exit 1
+fi
+
+exe_path=$(desktop_escape "$exe_path")
+
+# Terminal or GUI?
+read -rp "Runs in terminal? [y/N]: " terminal
+case "${terminal,,}" in
+  y|yes) terminal_flag=true ;;
+  *)     terminal_flag=false ;;
+esac
+
+echo ""
+echo "Pick an icon for this app (search 10,764 Nerd Font icons):"
+echo ""
+
+icon=$(solverforge-icon-picker "Icon for $name")
+[[ -z "$icon" ]] && { echo "Cancelled."; exit 1; }
+icon=$(desktop_escape "$icon")
+
+slug=$(echo "$name" | tr '[:upper:] ' '[:lower:]-' | tr -cd 'a-z0-9-')
+[[ -n "$slug" ]] || { echo "Error: name must contain letters or numbers."; exit 1; }
+desktop_dir="$HOME/.local/share/applications"
+mkdir -p "$desktop_dir"
+
+cat > "$desktop_dir/disk-${slug}.desktop" <<EOF
+[Desktop Entry]
+Version=1.0
+Name=$icon $name
+Comment=$name (local disk)
+Exec="$(printf '%q' "$exe_path")"
+Terminal=$terminal_flag
+Type=Application
+Icon=application-x-executable
+StartupNotify=true
+Categories=Utility;
+EOF
+
+echo ""
+echo "Installed: $icon $name → $exe_path"
+echo "Desktop file: $desktop_dir/disk-${slug}.desktop"

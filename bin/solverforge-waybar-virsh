@@ -1,0 +1,76 @@
+#!/bin/bash
+
+# SolverForge — Waybar module: libvirt/virsh VM status.
+# Bar shows total running/total (session + system). Tooltip shows breakdown.
+
+if ! command -v virsh &>/dev/null; then
+    exit 0
+fi
+
+icon=$'\xf3\xb0\x92\x8b'
+
+count_names() {
+    [[ -z "$1" ]] && { echo 0; return; }
+    printf '%s\n' "$1" | sed '/^[[:space:]]*$/d' | wc -l
+}
+
+json_escape() {
+    local input="$1"
+    input="${input//\\/\\\\}"
+    input="${input//\"/\\\"}"
+    input="${input//$'\n'/\\n}"
+    input="${input//$'\r'/}"
+    input="${input//$'\t'/\\t}"
+    printf '%s' "$input"
+}
+
+virsh_list_names() {
+    local connection="$1"
+    local state="$2"
+    local args=(--connect "$connection" list)
+
+    [[ "$state" == "running" ]] && args+=(--state-running)
+    args+=(--name)
+
+    local output=""
+    if output="$(virsh "${args[@]}" 2>/dev/null)"; then
+        echo "$output"
+        return
+    fi
+
+    if command -v sudo &>/dev/null; then
+        output="$(sudo -n virsh "${args[@]}" 2>/dev/null || true)"
+    fi
+
+    echo "$output"
+}
+
+session_running_names=$(virsh_list_names "qemu:///session" "running")
+session_total_names=$(virsh_list_names "qemu:///session" "all")
+system_running_names=$(virsh_list_names "qemu:///system" "running")
+system_total_names=$(virsh_list_names "qemu:///system" "all")
+
+session_running=$(count_names "$session_running_names")
+session_total=$(count_names "$session_total_names")
+system_running=$(count_names "$system_running_names")
+system_total=$(count_names "$system_total_names")
+
+total_running=$((session_running + system_running))
+total_defined=$((session_total + system_total))
+
+tip="Session: ${session_running}/${session_total} VMs"
+[[ -n "$session_running_names" ]] && tip+=$'\n'"${session_running_names}"
+tip+=$'\n'"System: ${system_running}/${system_total} VMs"
+[[ -n "$system_running_names" ]] && tip+=$'\n'"${system_running_names}"
+
+if [[ "$session_total" -eq 0 && "$system_total" -eq 0 ]]; then
+    tip="Virsh: no VMs defined"
+fi
+
+tip="$(json_escape "$tip")"
+
+if [[ "$total_defined" -eq 0 ]]; then
+    echo "{\"text\": \"\", \"tooltip\": \"Virsh: no VMs defined\", \"class\": \"empty\"}"
+else
+    echo "{\"text\": \"${icon}  ${total_running}\", \"tooltip\": \"${tip}\", \"class\": \"\"}"
+fi

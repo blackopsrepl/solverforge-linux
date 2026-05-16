@@ -1,0 +1,119 @@
+#!/bin/bash
+set -euo pipefail
+
+# SolverForge — Waybar module: cava audio visualizer (braille + rainbow).
+# Reads from the default PipeWire sink monitor — no virtual sinks, no loopbacks,
+# no graph manipulation. Visualizes whatever is playing through the system default output.
+# Idle animation: rotating braille vortex. Active: rainbow spectrum bars.
+
+command -v cava &>/dev/null || exit 0
+
+config="${XDG_RUNTIME_DIR:-/tmp}/solverforge-cava-waybar.conf"
+fifo="${XDG_RUNTIME_DIR:-/tmp}/solverforge-cava-waybar.$$"
+cava_pid=""
+
+cleanup() {
+    if [[ -n "${cava_pid}" ]] && kill -0 "${cava_pid}" 2>/dev/null; then
+        kill "${cava_pid}" 2>/dev/null || true
+        wait "${cava_pid}" 2>/dev/null || true
+    fi
+    rm -f "${fifo}"
+}
+
+trap cleanup EXIT
+trap 'exit 0' INT TERM PIPE
+
+ps -eo pid=,ppid=,args= \
+    | awk -v config="${config}" '$2 == 1 && index($0, "cava -p " config) { print $1 }' \
+    | xargs -r kill 2>/dev/null || true
+
+cat > "$config" <<EOF
+[general]
+bars = 12
+framerate = 30
+autosens = 1
+sensitivity = 100
+
+[input]
+method = pipewire
+source = auto
+
+[output]
+method = raw
+raw_target = /dev/stdout
+data_format = ascii
+ascii_max_range = 7
+bar_delimiter = 32
+
+[smoothing]
+noise_reduction = 77
+EOF
+
+mkfifo "${fifo}"
+cava -p "${config}" >"${fifo}" 2>/dev/null &
+cava_pid=$!
+
+python3 -u - "${fifo}" <<'PY'
+import sys, math, colorsys
+import signal
+
+signal.signal(signal.SIGPIPE, signal.SIG_DFL)
+
+BARS = 12
+MID = (BARS - 1) / 2.0
+
+# Braille blocks: empty to full (8 levels)
+BRAILLE = ['\u2800','\u2840','\u28C0','\u28C4','\u28E4','\u28F6','\u28F7','\u28FF']
+
+# Braille dot bit values in clockwise order around the 2x4 cell
+CLOCKWISE = [0x01, 0x08, 0x10, 0x20, 0x80, 0x40, 0x04, 0x02]
+
+def rainbow(pos, frame):
+    h = ((pos / float(BARS)) + (frame * 0.02)) % 1.0
+    r, g, b = colorsys.hls_to_rgb(h, 0.55, 0.9)
+    return f'#{int(r*255):02x}{int(g*255):02x}{int(b*255):02x}'
+
+def vortex_frame(frame):
+    parts = []
+    for i in range(BARS):
+        dist = abs(i - MID) / MID
+
+        phase = frame * 0.5 + dist * 4.0 + i * 0.3
+        density = max(1, int((1.0 - dist * 0.7) * 5))
+
+        bits = 0x2800
+        for d in range(density):
+            idx = int(phase + d * 1.5) % 8
+            bits |= CLOCKWISE[idx]
+
+        h = (dist * 0.6 + frame * 0.04) % 1.0
+        lum = 0.65 - dist * 0.25
+        r, g, b = colorsys.hls_to_rgb(h, lum, 0.95)
+        c = f'#{int(r*255):02x}{int(g*255):02x}{int(b*255):02x}'
+
+        parts.append(f'<span color=\"{c}\">{chr(bits)}</span>')
+    return ''.join(parts)
+
+frame = 0
+idle_count = 0
+with open(sys.argv[1], 'r') as stream:
+    for line in stream:
+        vals = line.split()
+        is_silent = not vals or all(v == '0' for v in vals)
+        if is_silent:
+            idle_count += 1
+            if idle_count > 10:
+                print(vortex_frame(frame), flush=True)
+            else:
+                print('\u2800' * BARS, flush=True)
+            frame += 1
+            continue
+        idle_count = 0
+        parts = []
+        for i, v in enumerate(vals):
+            n = min(int(v), 7)
+            c = rainbow(i, frame)
+            parts.append(f'<span color=\"{c}\">{BRAILLE[n]}</span>')
+        print(''.join(parts), flush=True)
+        frame += 1
+PY

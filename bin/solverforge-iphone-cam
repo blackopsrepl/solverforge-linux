@@ -1,0 +1,58 @@
+#!/bin/bash
+#
+# iPhone camera → virtual webcam via GStreamer (toggle)
+# Run once to start, run again to stop.
+
+PIDFILE="${XDG_RUNTIME_DIR:-/tmp}/solverforge-iphone-cam.pid"
+SUBNET="192.168.88.0/24"
+CAM_PORT=80
+CAM_PATH="/live"
+VIDEO_DEV="/dev/video1"
+
+# --- Toggle off if already running ---
+if [[ -f "$PIDFILE" ]] && kill -0 "$(cat "$PIDFILE")" 2>/dev/null; then
+  kill "$(cat "$PIDFILE")"
+  rm -f "$PIDFILE"
+  echo "iPhone camera stopped."
+  exit 0
+fi
+
+# --- Load v4l2loopback if needed ---
+if ! lsmod | grep -q v4l2loopback; then
+  sudo modprobe v4l2loopback devices=1 video_nr=1 exclusive_caps=1 card_label="Virtual Webcam"
+fi
+
+# --- Discover camera IP ---
+discover_ip() {
+  nmap -p "$CAM_PORT" --open -T4 --min-rate 256 -oG - "$SUBNET" 2>/dev/null \
+    | awk '/\/open/{print $2}' \
+    | while read -r ip; do
+        if curl -s --max-time 2 -o /dev/null -w '%{http_code}' "http://${ip}:${CAM_PORT}${CAM_PATH}" | grep -q '200'; then
+          echo "$ip"
+          return
+        fi
+      done
+}
+
+echo "Scanning for camera on ${SUBNET}..."
+CAM_IP=$(discover_ip)
+
+if [[ -z "$CAM_IP" ]]; then
+  echo "ERROR: Could not find camera on the network." >&2
+  exit 1
+fi
+
+echo "Found camera at ${CAM_IP}"
+
+# --- Stream (backgrounded, PID tracked) ---
+gst-launch-1.0 \
+  souphttpsrc location="http://${CAM_IP}:${CAM_PORT}${CAM_PATH}" is-live=true \
+  ! jpegdec \
+  ! videoconvert \
+  ! queue max-size-buffers=2 max-size-bytes=0 max-size-time=0 leaky=downstream \
+  ! v4l2sink device="$VIDEO_DEV" &
+
+echo $! > "$PIDFILE"
+echo "iPhone camera started (PID $(cat "$PIDFILE")). Run again to stop."
+wait
+rm -f "$PIDFILE"

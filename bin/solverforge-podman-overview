@@ -1,0 +1,27 @@
+#!/bin/bash
+
+# SolverForge — Podman container overview with decorated headers.
+# Shows both user and root containers with lolcat color.
+
+teal="\033[38;2;130;251;156m"
+dim="\033[38;2;106;110;149m"
+reset="\033[0m"
+bold="\033[1m"
+
+divider="${dim}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${reset}"
+
+echo ""
+echo -e "${divider}"
+echo -e "${bold}${teal}  ▸  User Containers${reset}"
+echo -e "${divider}"
+echo ""
+podman ps --all 2>/dev/null | lolcat.ruby3.4 --truecolor
+echo ""
+echo -e "${divider}"
+echo -e "${bold}${teal}  ▸  Root Containers${reset}"
+echo -e "${divider}"
+echo ""
+sudo podman ps --all 2>/dev/null | lolcat.ruby3.4 --truecolor
+echo ""
+echo -e "${dim}Press any key to close${reset}"
+read -rn1

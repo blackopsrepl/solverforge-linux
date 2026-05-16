@@ -1,0 +1,27 @@
+#!/bin/bash
+
+# SolverForge — Interactive package remover using zypper + fzf.
+# Search installed packages, multi-select with Tab, Enter to remove.
+
+echo "Loading installed packages..."
+pkgs=$(zypper se -t package -i 2>/dev/null \
+  | tail -n +4 \
+  | awk -F'|' '{gsub(/^ +| +$/, "", $2); gsub(/^ +| +$/, "", $3); if ($2 != "") printf "%-40s %s\n", $2, $3}')
+
+[[ -z "$pkgs" ]] && { echo "Failed to load packages."; read -rp "Press enter to close..."; exit 1; }
+
+selected=$(echo "$pkgs" \
+  | fzf --multi --reverse --header="Tab=select, Enter=remove, Esc=cancel" \
+  | awk '{print $1}')
+
+[[ -z "$selected" ]] && { echo "Cancelled."; exit 0; }
+
+mapfile -t selected_pkgs <<< "$selected"
+
+echo ""
+echo "Removing:"
+printf '%s\n' "${selected_pkgs[@]}"
+echo ""
+sudo zypper remove "${selected_pkgs[@]}"
+echo ""
+read -rp "Press enter to close..."

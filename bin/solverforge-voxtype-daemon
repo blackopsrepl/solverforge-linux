@@ -1,0 +1,58 @@
+#!/bin/bash
+
+# SolverForge — start voxtype only after the systemd user manager knows about
+# the active Sway/Wayland session. graphical-session.target comes up before
+# Sway imports DISPLAY/WAYLAND_DISPLAY/SWAYSOCK, so a plain service ExecStart
+# can race and never attach cleanly at login.
+
+set -euo pipefail
+
+SYSTEMCTL_BIN=/usr/bin/systemctl
+VOXTYPE_BIN="${VOXTYPE_BIN:-$HOME/.cargo/bin/voxtype}"
+WAIT_TIMEOUT_SECS="${SOLVERFORGE_VOXTYPE_WAIT_TIMEOUT_SECS:-30}"
+REQUIRED_VARS=(DISPLAY WAYLAND_DISPLAY SWAYSOCK XDG_CURRENT_DESKTOP XDG_SESSION_TYPE)
+
+if [[ ! -x "$VOXTYPE_BIN" ]]; then
+  VOXTYPE_BIN="$(command -v voxtype 2>/dev/null || true)"
+fi
+
+[[ -n "$VOXTYPE_BIN" ]] || exit 0
+
+load_manager_env() {
+  local line key value
+
+  while IFS= read -r line; do
+    [[ "$line" == *=* ]] || continue
+    key=${line%%=*}
+    value=${line#*=}
+    MANAGER_ENV["$key"]="$value"
+  done < <("$SYSTEMCTL_BIN" --user show-environment 2>/dev/null || true)
+}
+
+deadline=$((SECONDS + WAIT_TIMEOUT_SECS))
+
+while (( SECONDS < deadline )); do
+  declare -A MANAGER_ENV=()
+  ready=1
+
+  load_manager_env
+
+  for key in "${REQUIRED_VARS[@]}"; do
+    value="${MANAGER_ENV[$key]-}"
+    if [[ -z "$value" ]]; then
+      ready=0
+      break
+    fi
+
+    export "$key=$value"
+  done
+
+  if (( ready )) && [[ -S "${SWAYSOCK}" ]]; then
+    exec "$VOXTYPE_BIN" daemon
+  fi
+
+  sleep 1
+done
+
+echo "solverforge-voxtype-daemon: timed out waiting for the Sway session environment" >&2
+exit 1

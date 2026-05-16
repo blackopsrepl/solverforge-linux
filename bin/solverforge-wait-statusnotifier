@@ -1,0 +1,16 @@
+#!/bin/bash
+set -euo pipefail
+
+for _ in {1..50}; do
+  if qdbus6 org.kde.StatusNotifierWatcher /StatusNotifierWatcher >/dev/null 2>&1; then
+    exit 0
+  fi
+
+  if command -v qdbus6 >/dev/null 2>&1; then
+    qdbus6 org.kde.kded6 /kded org.kde.kded6.loadModule statusnotifierwatcher >/dev/null 2>&1 || true
+  fi
+
+  sleep 0.1
+done
+
+exit 1

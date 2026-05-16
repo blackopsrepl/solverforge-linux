@@ -1,0 +1,182 @@
+# SolverForge Linux
+
+SolverForge Linux is my personal openSUSE + Sway desktop framework. It is a real working setup, not a generic dotfiles starter kit: it installs packages, writes desktop configuration under `~/.config`, wires shell startup, and assumes the openSUSE package ecosystem.
+
+Read the scripts before running them if you do not already trust this repo.
+
+## Install
+
+Recommended path:
+
+```bash
+git clone https://github.com/blackopsrepl/solverforge-linux.git ~/hack/solverforge-linux
+cd ~/hack/solverforge-linux
+less boot.sh install.sh install/03-config.sh
+SOLVERFORGE_PATH="$PWD" bash ./install.sh
+```
+
+Convenience path:
+
+```bash
+curl -sL https://raw.githubusercontent.com/blackopsrepl/solverforge-linux/main/boot.sh | bash
+```
+
+The bootstrap path installs into `~/.local/share/solverforge`. The manual path can run from another checkout by setting `SOLVERFORGE_PATH`.
+
+## Architecture
+
+SolverForge Linux uses a two-layer model:
+
+```text
+~/.local/share/solverforge/ or $SOLVERFORGE_PATH
+  bin/                       solverforge-* commands
+  default/                   shared default config layer
+    sway/                    compositor config
+    waybar/                  bar config and style
+    wofi/                    launcher styling
+    zsh/                     shell modules
+    bash/                    bash modules
+    nvim/                    LazyVim defaults
+    theme/                   color source, templates, overrides
+
+~/.config/solverforge/
+  backup.conf                local backup config
+  extensions/menu.sh         local menu entries
+  local-env.sh               local environment overrides
+  local-init.zsh             local shell bootstrap
+  tui-apps/                  user-installed TUI launchers
+```
+
+Fresh installs generate:
+
+- `~/.config/sway/config.d/solverforge.conf`, which includes the default Sway layer.
+- `~/.config/environment.d/solverforge.conf`, which exports `SOLVERFORGE_PATH`, PATH, `SWAYLOCK_CONFIG`, and Qt theme settings.
+- `~/.config/waybar/config` and `style.css` symlinks into the default layer.
+- Optional `voxtype.service` and Codex MCP registration when those tools are installed.
+
+Generated theme files under `default/theme/generated/` are not tracked. Run `solverforge-theme-apply` to materialize them from `default/theme/colors.toml`, templates, and overrides.
+
+## Desktop Surface
+
+The default desktop is openSUSE + Sway + Waybar + Wofi, with Kitty and Fira Code as the terminal baseline.
+
+Main pieces:
+
+- `solverforge-menu`: Wofi-based hierarchical menu for apps, TUI tools, capture, setup, install/remove flows, power profiles, and system actions.
+- `default/sway/bindings.conf`: keybindings for launchers, copy/paste, scratchpad, layouts, key guide, browser launch, Wayscriber, and keyboard layout cycling.
+- `default/sway/autostart.conf`: tray bridge, Waybar launcher, companion Waybar daemons, status-notifier waits, and idle/screensaver integration.
+- `default/waybar/config`: floating Waybar island with workspaces, scratchpad, voxtype, cava, Codexbar, Repobar, Trexbar, system metrics, Podman, Ollama, Virsh, updates, tray, power profile, and power menu.
+- `default/waybar/style.css`: Hackerman Waybar styling used by the running setup.
+
+## Scripts
+
+All executable commands live in `bin/` and use the `solverforge-` prefix.
+
+Core desktop and launcher scripts:
+
+- `solverforge-menu`
+- `solverforge-keys`
+- `solverforge-icon-picker`
+- `solverforge-launch-or-focus`
+- `solverforge-launch-webapp`
+- `solverforge-webapp-install`
+- `solverforge-webapp-remove`
+- `solverforge-tui-install`
+- `solverforge-tui-remove`
+- `solverforge-disk-install`
+- `solverforge-disk-remove`
+- `solverforge-pkg-install`
+- `solverforge-pkg-remove`
+- `solverforge-theme-apply`
+- `solverforge-lazyvim-install`
+
+Running desktop helpers:
+
+- `solverforge-browser`
+- `solverforge-swayidle`
+- `solverforge-screensaver`
+- `solverforge-tray-start`
+- `solverforge-wait-statusnotifier`
+- `solverforge-voxtype-daemon`
+- `solverforge-iphone-cam`
+- `solverforge-showkeys`
+- `solverforge-autotile`
+
+Waybar modules and companions:
+
+- `solverforge-waybar-start`
+- `solverforge-waybar-companions-start`
+- `solverforge-waybar-cava`
+- `solverforge-waybar-codexbar`
+- `solverforge-waybar-repobar`
+- `solverforge-waybar-trexbar`
+- `solverforge-waybar-power-profile`
+- `solverforge-waybar-notifications`
+- `solverforge-waybar-ollama`
+- `solverforge-waybar-podman`
+- `solverforge-waybar-updates`
+- `solverforge-waybar-virsh`
+- `solverforge-waybar-voxtype`
+
+System and application helpers:
+
+- `solverforge-backup`
+- `solverforge-backup-prune`
+- `solverforge-cargo-sweep`
+- `solverforge-podman-overview`
+- `solverforge-virsh-overview`
+- `solverforge-calendar` local wrapper
+- `solverforge-mail` local wrapper
+- `solverforge-outlook-send`
+- `solverforge-computer-use`
+
+## SolverForge Linux Computer Use
+
+`solverforge-computer-use` is a local MCP server for operating the current Sway session from Codex. It provides screen info, screenshots, focus/window inspection, pointer actions, typing, key chords, and clipboard access through Sway and Wayland tools.
+
+Register it:
+
+```bash
+solverforge-computer-use --install-codex-mcp
+```
+
+Verify it:
+
+```bash
+solverforge-computer-use --self-test
+codex mcp list
+```
+
+Fresh installs attempt registration automatically when `codex` is available.
+
+## Local Overrides
+
+Keep machine-specific settings outside the shared repo:
+
+- Copy `examples/local-env.sh.example` to `~/.config/solverforge/local-env.sh` for PATH, browser, voxtype, cargo sweep, and screensaver overrides.
+- Copy `examples/local-init.zsh.example` to `~/.config/solverforge/local-init.zsh` for host-specific shell initialization.
+- Add custom menu entries in `~/.config/solverforge/extensions/menu.sh`.
+
+The publish tree should not contain username-specific paths, local DBs, generated theme history, mailbox state, or private app configuration.
+
+## Dependencies
+
+Required packages are listed in `packages.txt` and installed by `install/02-packages.sh`.
+
+Optional packages are listed in `packages-optional.txt`. Optional integrations should degrade cleanly when their commands are absent. Notable optional integrations include `cava`, `podman`, `virsh`, `ollama`, `voxtype`, `plasma6-workspace`, `python313-python-xlib`, `tmux`, `yazi`, `mc`, and `lazygit`.
+
+Manual dependencies:
+
+- Fira Code Nerd Font for the terminal and UI font baseline.
+- Zen browser if you want the default browser command to resolve to `zen`.
+- `voxtype` if you want push-to-talk transcription.
+- A screensaver binary if you want `solverforge-screensaver` to launch anything besides `$HOME/.cargo/bin/solverforge-screensaver`.
+- Mail and calendar binaries if you want the optional `solverforge-mail` and `solverforge-calendar` wrappers to launch local applications.
+
+## License
+
+MIT. See `LICENSE`.
+
+## Publication Notes
+
+This repository intentionally ships the current running desktop behavior with local state removed. The mail and calendar launchers are shell wrappers only; the application binaries are not shipped in this repository.

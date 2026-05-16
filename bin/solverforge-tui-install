@@ -1,0 +1,55 @@
+#!/bin/bash
+
+# SolverForge — Install a TUI app that launches in a floating terminal window.
+# Entries are stored in ~/.config/solverforge/tui-apps/ as simple key=value files.
+
+[[ ":$PATH:" != *":$HOME/.local/share/solverforge/bin:"* ]] && export PATH="$HOME/.local/share/solverforge/bin:$PATH"
+
+TUI_DIR="$HOME/.config/solverforge/tui-apps"
+mkdir -p "$TUI_DIR"
+
+kv_escape() {
+  printf '%s' "$1" | tr '\n\r' '  '
+}
+
+read -rp "App name: " name
+[[ -z "$name" ]] && { echo "Cancelled."; exit 1; }
+name=$(kv_escape "$name")
+
+read -rp "Command to run: " cmd
+[[ -z "$cmd" ]] && { echo "Cancelled."; exit 1; }
+cmd=$(kv_escape "$cmd")
+
+echo ""
+echo "Does this app stay running interactively (like htop, vim, k9s)?"
+echo "  [y] Yes — launch directly, no 'press enter' prompt"
+echo "  [n] No  — run command then wait for keypress before closing"
+read -rp "Interactive? [y/n]: " interactive
+case "$interactive" in
+  y|Y) interactive="true" ;;
+  *) interactive="false" ;;
+esac
+
+echo ""
+echo "Pick an icon (search 10,764 Nerd Font icons):"
+echo ""
+
+icon=$(solverforge-icon-picker "Icon for $name")
+[[ -z "$icon" ]] && { echo "Cancelled."; exit 1; }
+icon=$(kv_escape "$icon")
+
+slug=$(echo "$name" | tr '[:upper:] ' '[:lower:]-' | tr -cd 'a-z0-9-')
+[[ -n "$slug" ]] || { echo "Error: name must contain letters or numbers."; exit 1; }
+
+cat > "$TUI_DIR/${slug}.conf" <<EOF
+name=$name
+cmd=$cmd
+icon=$icon
+interactive=$interactive
+EOF
+
+echo ""
+echo "Installed TUI app: $icon $name"
+echo "  Command: $cmd"
+echo "  Interactive: $interactive"
+echo "  Config: $TUI_DIR/${slug}.conf"

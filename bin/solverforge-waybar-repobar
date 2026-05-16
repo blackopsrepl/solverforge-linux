@@ -1,0 +1,27 @@
+#!/bin/bash
+
+config_path="${REPOBAR_CONFIG:-$HOME/.repobar/config.json}"
+repobar_cmd="${REPOBAR_BIN:-$HOME/.local/bin/repobar}"
+
+if [[ ! -x "$repobar_cmd" ]] && command -v repobar &>/dev/null; then
+    repobar_cmd="$(command -v repobar)"
+fi
+
+if [[ ! -x "$repobar_cmd" ]]; then
+    exit 0
+fi
+
+case "${1:-render}" in
+    render)
+        exec "$repobar_cmd" waybar render --config "$config_path"
+        ;;
+    panel|details|open)
+        exec "$repobar_cmd" waybar panel --config "$config_path"
+        ;;
+    refresh)
+        exec "$repobar_cmd" refresh --config "$config_path"
+        ;;
+    *)
+        exec "$repobar_cmd" waybar render --config "$config_path"
+        ;;
+esac

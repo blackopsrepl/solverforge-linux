@@ -1,0 +1,14 @@
+# SolverForge — Bash aggregator
+# Sourced from ~/.bashrc
+
+SOLVERFORGE_PATH="${SOLVERFORGE_PATH:-$HOME/.local/share/solverforge}"
+export SOLVERFORGE_PATH
+
+# Prepend SolverForge bin to PATH (idempotent)
+case ":$PATH:" in
+  *":$SOLVERFORGE_PATH/bin:"*) ;;
+  *) export PATH="$SOLVERFORGE_PATH/bin:$PATH" ;;
+esac
+
+# Source SolverForge bash modules
+source "$SOLVERFORGE_PATH/default/bash/keybindings"

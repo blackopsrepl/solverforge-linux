@@ -1,0 +1,77 @@
+#!/bin/bash
+
+# SolverForge — Virsh/libvirt VM overview with decorated headers.
+# Shows VMs, networks, and storage pools with lolcat color.
+
+teal="\033[38;2;130;251;156m"
+dim="\033[38;2;106;110;149m"
+reset="\033[0m"
+bold="\033[1m"
+
+divider="${dim}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${reset}"
+
+virsh_exec() {
+    local connection="$1"
+    local output=""
+    shift
+    if ! output="$(virsh --connect "$connection" "$@" 2>/dev/null)"; then
+        if command -v sudo >/dev/null; then
+            output="$(sudo -n virsh --connect "$connection" "$@" 2>/dev/null || true)"
+        else
+            output=""
+        fi
+    fi
+
+    printf '%s\n' "$output"
+}
+
+render_list() {
+    local title="$1"
+    local connection="$2"
+    shift 2
+    local output=""
+
+    echo -e "${bold}${teal}  󰒋 ▸  ${title}${reset}"
+    echo -e "${divider}"
+    echo ""
+    output="$(virsh_exec "$connection" "$@" | sed '/^[[:space:]]*$/d')"
+    if [[ -z "$output" ]]; then
+        echo -e "${dim}(no entries)${reset}"
+    else
+        printf '%s\n' "$output" | lolcat.ruby3.4 --truecolor
+    fi
+    echo ""
+}
+
+echo ""
+echo -e "${divider}"
+echo -e "${bold}${teal}  󰒋 ▸  Virtual Machines${reset}"
+echo -e "${divider}"
+echo ""
+render_list "Session VMs" "qemu:///session" list --all --name
+render_list "System VMs" "qemu:///system" list --all --name
+echo ""
+echo -e "${divider}"
+echo -e "${bold}${teal}  󰒋 ▸  Networks${reset}"
+echo -e "${divider}"
+echo ""
+net_output="$(virsh_exec 'qemu:///system' net-list --all | sed '/^[[:space:]]*$/d')"
+if [[ -z "$net_output" ]]; then
+    echo -e "${dim}(no entries)${reset}"
+else
+    printf '%s\n' "$net_output" | lolcat.ruby3.4 --truecolor
+fi
+echo ""
+echo -e "${divider}"
+echo -e "${bold}${teal}  󰒋 ▸  Storage Pools${reset}"
+echo -e "${divider}"
+echo ""
+pool_output="$(virsh_exec 'qemu:///system' pool-list --all | sed '/^[[:space:]]*$/d')"
+if [[ -z "$pool_output" ]]; then
+    echo -e "${dim}(no entries)${reset}"
+else
+    printf '%s\n' "$pool_output" | lolcat.ruby3.4 --truecolor
+fi
+echo ""
+echo -e "${dim}Press any key to close${reset}"
+read -rn1

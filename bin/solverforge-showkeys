@@ -1,0 +1,63 @@
+#!/bin/bash
+
+# SolverForge — Toggle on-screen keystroke display (wshowkeys)
+# Designed for screen recordings / OBS streaming on Sway/Wayland.
+# Hackerman-themed: dark translucent background, bright foreground,
+# green accent for modifier keys.
+
+PIDFILE="${XDG_RUNTIME_DIR:-/tmp}/solverforge-showkeys.pid"
+
+start_showkeys() {
+  wshowkeys \
+    -a bottom -a left -a right \
+    -b '#0B0C16CC' \
+    -f '#ddf7ffFF' \
+    -s '#82FB9CFF' \
+    -F 'Fira Code 24' \
+    -t 3 \
+    -m 32 &
+  echo $! > "$PIDFILE"
+  notify-send -t 2000 "Show Keys" "Keystroke overlay enabled" 2>/dev/null
+}
+
+stop_showkeys() {
+  if [[ -f "$PIDFILE" ]]; then
+    kill "$(cat "$PIDFILE")" 2>/dev/null
+    rm -f "$PIDFILE"
+  fi
+  # Also kill any stray instances
+  pkill -x wshowkeys 2>/dev/null
+  notify-send -t 2000 "Show Keys" "Keystroke overlay disabled" 2>/dev/null
+}
+
+is_running() {
+  [[ -f "$PIDFILE" ]] && kill -0 "$(cat "$PIDFILE")" 2>/dev/null
+}
+
+case "${1:-toggle}" in
+  start)
+    stop_showkeys 2>/dev/null
+    start_showkeys
+    ;;
+  stop)
+    stop_showkeys
+    ;;
+  toggle)
+    if is_running; then
+      stop_showkeys
+    else
+      start_showkeys
+    fi
+    ;;
+  status)
+    if is_running; then
+      echo "running (pid $(cat "$PIDFILE"))"
+    else
+      echo "stopped"
+    fi
+    ;;
+  *)
+    echo "Usage: solverforge-showkeys [start|stop|toggle|status]"
+    exit 1
+    ;;
+esac

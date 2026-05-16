@@ -1,0 +1,55 @@
+#!/bin/bash
+
+# SolverForge — Install a web app as a .desktop entry with Nerd Font icon selection.
+
+[[ ":$PATH:" != *":$HOME/.local/share/solverforge/bin:"* ]] && export PATH="$HOME/.local/share/solverforge/bin:$PATH"
+
+desktop_escape() {
+  printf '%s' "$1" | tr '\n\r' '  '
+}
+
+read -rp "App name: " name
+[[ -z "$name" ]] && { echo "Cancelled."; exit 1; }
+name=$(desktop_escape "$name")
+
+read -rp "URL: " url
+[[ -z "$url" ]] && { echo "Cancelled."; exit 1; }
+url=$(desktop_escape "$url")
+
+case "$url" in
+  https://*|http://*) ;;
+  *)
+    echo "Error: URL must start with http:// or https://"
+    exit 1
+    ;;
+esac
+
+echo ""
+echo "Pick an icon for this web app (search 10,764 Nerd Font icons):"
+echo ""
+
+icon=$(solverforge-icon-picker "Icon for $name")
+[[ -z "$icon" ]] && { echo "Cancelled."; exit 1; }
+icon=$(desktop_escape "$icon")
+
+slug=$(echo "$name" | tr '[:upper:] ' '[:lower:]-' | tr -cd 'a-z0-9-')
+[[ -n "$slug" ]] || { echo "Error: name must contain letters or numbers."; exit 1; }
+desktop_dir="$HOME/.local/share/applications"
+mkdir -p "$desktop_dir"
+
+cat > "$desktop_dir/webapp-${slug}.desktop" <<EOF
+[Desktop Entry]
+Version=1.0
+Name=$icon $name
+Comment=$name web app
+Exec=solverforge-launch-webapp "$(printf '%q' "$url")"
+Terminal=false
+Type=Application
+Icon=applications-internet
+StartupNotify=true
+Categories=Network;WebApp;
+EOF
+
+echo ""
+echo "Installed: $icon $name → $url"
+echo "Desktop file: $desktop_dir/webapp-${slug}.desktop"

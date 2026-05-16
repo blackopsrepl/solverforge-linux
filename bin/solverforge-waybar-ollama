@@ -1,0 +1,26 @@
+#!/bin/bash
+
+# SolverForge — Waybar module: Ollama loaded models.
+# Bar shows count of models loaded in memory. Tooltip lists model details.
+
+if ! command -v ollama &>/dev/null; then
+    exit 0
+fi
+
+icon="󰧑"
+
+# ollama ps outputs a header line + one line per loaded model
+models=$(ollama ps 2>/dev/null | tail -n +2)
+count=$(echo "$models" | grep -c '[^[:space:]]')
+
+if [[ "$count" -eq 0 ]]; then
+    echo "{\"text\": \"\", \"tooltip\": \"Ollama: no models loaded\", \"class\": \"empty\"}"
+else
+    tip="Models loaded: ${count}"
+    while IFS= read -r line; do
+        name=$(echo "$line" | awk '{print $1}')
+        size=$(echo "$line" | awk '{print $3, $4}')
+        tip="${tip}\\n${name}  (${size})"
+    done <<< "$models"
+    echo "{\"text\": \"${icon}  ${count}\", \"tooltip\": \"${tip}\", \"class\": \"\"}"
+fi
