@@ -37,7 +37,8 @@ SolverForge Linux uses a two-layer model:
     zsh/                     shell modules
     bash/                    bash modules
     nvim/                    LazyVim defaults
-    theme/                   color source, templates, overrides
+    systemd/                 user-service overrides
+    theme/                   color source and app themes, including Doom Emacs
 
 ~/.config/solverforge/
   backup.conf                local backup config
@@ -52,13 +53,14 @@ Fresh installs generate:
 - `~/.config/sway/config.d/solverforge.conf`, which includes the default Sway layer.
 - `~/.config/environment.d/solverforge.conf`, which exports `SOLVERFORGE_PATH`, PATH, `SWAYLOCK_CONFIG`, and Qt theme settings.
 - `~/.config/waybar/config` and `style.css` symlinks into the default layer.
+- `~/.config/doom/themes/solverforge-hackerman-theme.el` when a Doom config is present.
 - Optional `voxtype.service` and Codex MCP registration when those tools are installed.
 
 Generated theme files under `default/theme/generated/` are not tracked. Run `solverforge-theme-apply` to materialize them from `default/theme/colors.toml`, templates, and overrides.
 
 ## Desktop Surface
 
-The default desktop is openSUSE + Sway + Waybar + Wofi, with Kitty and Fira Code as the terminal baseline.
+The default desktop is openSUSE + Sway + Waybar + Wofi, with Kitty and Fira Code as the terminal baseline. Doom Emacs is the preferred editor; the LazyVim/Neovim path remains available.
 
 Main pieces:
 
@@ -88,6 +90,7 @@ Core desktop and launcher scripts:
 - `solverforge-pkg-install`
 - `solverforge-pkg-remove`
 - `solverforge-theme-apply`
+- `solverforge-doom-install`
 - `solverforge-lazyvim-install`
 
 Running desktop helpers:
@@ -130,6 +133,24 @@ System and application helpers:
 - `solverforge-outlook-send`
 - `solverforge-computer-use`
 
+## Doom Emacs
+
+SolverForge installs both openSUSE Emacs packages and runs one X11-backed `emacs.service` user daemon. Terminal and graphical frames are clients of that same daemon. Doom itself lives at the XDG path `~/.config/emacs`, with its personal configuration at `~/.config/doom`.
+
+Install with the stock Doom config:
+
+```bash
+solverforge-doom-install
+```
+
+Or restore an existing config repository during installation:
+
+```bash
+solverforge-doom-install https://forge.example/user/doom-config.git
+```
+
+The installer preserves legacy Emacs init paths as timestamped backups, runs `doom sync` and `doom doctor`, wires the X11 service override, enables and restarts the distro `emacs.service` user unit, and never modifies or removes Neovim. The `SUPER + Shift+M` binding opens a graphical client frame, while `em` opens a terminal client frame. Neither command falls back to a separate Emacs process, and there is no shell alias for `emacs-x11`.
+
 ## SolverForge Linux Computer Use
 
 `solverforge-computer-use` is a local MCP server for operating the current Sway session from Codex. It provides screen info, screenshots, focus/window inspection, pointer actions, typing, key chords, and clipboard access through Sway and Wayland tools.
@@ -163,7 +184,7 @@ The publish tree should not contain username-specific paths, local DBs, generate
 
 Required packages are listed in `packages.txt` and installed by `install/02-packages.sh`.
 
-Optional packages are listed in `packages-optional.txt`. Optional integrations should degrade cleanly when their commands are absent. Notable optional integrations include `cava`, `podman`, `virsh`, `ollama`, `voxtype`, `plasma6-workspace`, `python313-python-xlib`, `tmux`, `yazi`, `mc`, and `lazygit`.
+Optional packages are listed in `packages-optional.txt`. Optional integrations should degrade cleanly when their commands are absent. Notable optional integrations include `emacs-nox`, `emacs-x11`, `cava`, `podman`, `virsh`, `ollama`, `voxtype`, `plasma6-workspace`, `python313-python-xlib`, `tmux`, `yazi`, `mc`, and `lazygit`.
 
 Manual dependencies:
 

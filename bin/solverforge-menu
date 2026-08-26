@@ -56,7 +56,9 @@ float_interactive() {
 open_in_editor() {
   local file="$1"
   local editor="${EDITOR:-nvim}"
-  setsid kitty --app-id sway-float -e "$editor" "$file" &>/dev/null &
+  local -a editor_command
+  read -r -a editor_command <<< "$editor"
+  setsid kitty --app-id sway-float -e "${editor_command[@]}" "$file" &>/dev/null &
 }
 
 power_profile_label() {
@@ -238,24 +240,26 @@ show_tui_menu() {
 }
 
 show_setup_menu() {
-  case $(menu "Setup" "󰕾  Audio\n󰍹  Monitors\n󰌌  Keybindings\n󰁯  Backup\n󰏗  Menu Extensions\n󰒓  SolverForge\n  LazyVim Config") in
+  case $(menu "Setup" "󰕾  Audio\n󰍹  Monitors\n󰌌  Keybindings\n󰁯  Backup\n󰏗  Menu Extensions\n󰒓  SolverForge\n  Doom Emacs Config\n  LazyVim Config") in
   *Audio*) setsid pavucontrol &>/dev/null & ;;
   *Monitors*) open_in_editor "$SOLVERFORGE_PATH/default/sway/output.conf" ;;
   *Keybindings*) open_in_editor "$SOLVERFORGE_PATH/default/sway/bindings.conf" ;;
   *Backup*) open_in_editor "$HOME/.config/solverforge/backup.conf" ;;
   *"Menu Extensions"*) open_in_editor "$HOME/.config/solverforge/extensions/menu.sh" ;;
   *SolverForge*) open_in_editor "$HOME/.config/sway/config.d/solverforge.conf" ;;
+  *"Doom Emacs Config"*) setsid emacsclient --create-frame "$HOME/.config/doom/config.el" &>/dev/null & ;;
   *"LazyVim Config"*) float_interactive "nvim $HOME/.config/nvim/lua/plugins/"; return ;;
   *) show_main_menu ;;
   esac
 }
 
 show_install_menu() {
-  case $(menu "Install" "  openSUSE Package\n󰖟  Web App\n  TUI App\n󰉋  Disk App\n  LazyVim\n󰄀  iPhone Camera") in
+  case $(menu "Install" "  openSUSE Package\n󰖟  Web App\n  TUI App\n󰉋  Disk App\n  Doom Emacs\n  LazyVim\n󰄀  iPhone Camera") in
   *Package*) float_term "solverforge-pkg-install" ;;
   *Web*) float_term "solverforge-webapp-install" ;;
   *TUI*) float_term "solverforge-tui-install" ;;
   *Disk*) float_term "solverforge-disk-install" ;;
+  *"Doom Emacs"*) float_term "solverforge-doom-install" ;;
   *LazyVim*) float_term "solverforge-lazyvim-install" ;;
   *) show_main_menu ;;
   esac

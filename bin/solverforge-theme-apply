@@ -101,6 +101,11 @@ wire_symlink "$GENERATED_DIR/mc-hackerman.ini" "$HOME/.local/share/mc/skins/hack
 # tmux: configuration
 wire_symlink "$GENERATED_DIR/tmux.conf" "$HOME/.tmux.conf"
 
+# Doom Emacs: generated custom theme (only when a Doom config is present)
+if [[ -d "$HOME/.config/doom" ]]; then
+  wire_symlink "$GENERATED_DIR/solverforge-hackerman-theme.el" "$HOME/.config/doom/themes/solverforge-hackerman-theme.el"
+fi
+
 # KDE: kdeglobals (colors for dolphin, kate, etc.)
 wire_symlink "$GENERATED_DIR/kdeglobals" "$HOME/.config/kdeglobals"
 
@@ -129,5 +134,8 @@ if [[ "$1" == "--reload" ]]; then
   killall -SIGUSR2 opencode 2>/dev/null
   swaync-client --reload-css 2>/dev/null
   tmux source-file ~/.tmux.conf 2>/dev/null
+  if command -v emacsclient &>/dev/null && emacsclient --eval t &>/dev/null; then
+    emacsclient --eval "(progn (load-theme 'solverforge-hackerman t) (enable-theme 'solverforge-hackerman))" &>/dev/null
+  fi
   echo "Reload complete"
 fi

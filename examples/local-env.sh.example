@@ -2,7 +2,8 @@
 # Copy to ~/.config/solverforge/local-env.sh and edit locally.
 
 export PATH="$HOME/.cargo/bin:$HOME/go/bin:$PATH"
-export EDITOR="nvim"
+export EDITOR="emacsclient --tty"
+export VISUAL="emacsclient --create-frame"
 export BROWSER="zen"
 export VOXTYPE_BIN="$HOME/.cargo/bin/voxtype"
 export SOLVERFORGE_CARGO_SWEEP_ROOT="$HOME/src"

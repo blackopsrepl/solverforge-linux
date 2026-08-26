@@ -1,6 +1,8 @@
-export PATH="$HOME/.local/bin:$PATH"
+export PATH="$HOME/.config/emacs/bin:$HOME/.local/bin:$PATH"
 
-export EDITOR='vim'
+export ALTERNATE_EDITOR=''
+export EDITOR='emacsclient --tty'
+export VISUAL='emacsclient --create-frame'
 export TMPDIR='/tmp/'
 export RUST_LOG="warn,imap_codec=error,imap_client=error"
 

@@ -17,7 +17,8 @@ plasma6-workspace
 power-profiles-daemon
 libvirt-client
 solaar
-emacs
+emacs-nox
+emacs-x11
 tmux
 yazi
 mc

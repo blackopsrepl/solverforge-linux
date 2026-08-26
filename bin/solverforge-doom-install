@@ -1,0 +1,103 @@
+#!/bin/bash
+
+# SolverForge — Install Doom Emacs without removing the Neovim setup.
+
+set -euo pipefail
+
+SOLVERFORGE_PATH="${SOLVERFORGE_PATH:-$HOME/.local/share/solverforge}"
+EMACS_DIR="${EMACSDIR:-$HOME/.config/emacs}"
+DOOM_DIR="${DOOMDIR:-$HOME/.config/doom}"
+EMACS_SERVICE_OVERRIDE="$SOLVERFORGE_PATH/default/systemd/emacs.service.d/override.conf"
+DOOM_CONFIG_REPO="${1:-${SOLVERFORGE_DOOM_CONFIG_REPO:-}}"
+DOOM_REPO="${SOLVERFORGE_DOOM_REPO:-https://github.com/doomemacs/core.git}"
+
+if [[ "$DOOM_CONFIG_REPO" == "--help" || "$DOOM_CONFIG_REPO" == "-h" ]]; then
+  cat <<'EOF'
+Usage: solverforge-doom-install [CONFIG_REPO_URL]
+
+Installs emacs-nox and emacs-x11, clones Doom into ~/.config/emacs, optionally
+clones a Doom config into ~/.config/doom, applies the SolverForge theme, syncs
+Doom, runs its doctor, and enables an X11-backed distro emacs user service.
+
+CONFIG_REPO_URL may also be set with SOLVERFORGE_DOOM_CONFIG_REPO.
+Existing Neovim files are never changed or removed.
+EOF
+  exit 0
+fi
+
+backup_path() {
+  local source_path="$1"
+  local backup_path
+  backup_path="${source_path}.bak.$(date +%Y%m%d%H%M%S)"
+  echo "Moving legacy path to $backup_path"
+  mv -- "$source_path" "$backup_path"
+}
+
+echo "SolverForge Doom Emacs Installer"
+echo "================================="
+echo
+
+packages=(emacs-nox emacs-x11 git ripgrep fd)
+missing_packages=()
+for package in "${packages[@]}"; do
+  rpm -q "$package" &>/dev/null || missing_packages+=("$package")
+done
+
+if ((${#missing_packages[@]})); then
+  echo "Installing required packages: ${missing_packages[*]}"
+  sudo zypper install --no-confirm "${missing_packages[@]}"
+fi
+
+# Legacy init paths take precedence over the XDG Emacs directory. Preserve
+# them as timestamped backups so ~/.config/emacs is the active installation.
+for legacy_path in "$HOME/.emacs" "$HOME/.emacs.el" "$HOME/.emacs.d"; do
+  [[ -e "$legacy_path" || -L "$legacy_path" ]] && backup_path "$legacy_path"
+done
+
+if [[ -e "$EMACS_DIR" && ! -x "$EMACS_DIR/bin/doom" ]]; then
+  backup_path "$EMACS_DIR"
+fi
+
+if [[ ! -x "$EMACS_DIR/bin/doom" ]]; then
+  mkdir -p "$(dirname "$EMACS_DIR")"
+  echo "Cloning Doom Emacs into $EMACS_DIR"
+  git clone --depth=1 "$DOOM_REPO" "$EMACS_DIR"
+else
+  echo "Reusing Doom Emacs at $EMACS_DIR"
+fi
+
+if [[ ! -e "$DOOM_DIR" && -n "$DOOM_CONFIG_REPO" ]]; then
+  mkdir -p "$(dirname "$DOOM_DIR")"
+  echo "Cloning Doom config into $DOOM_DIR"
+  git clone "$DOOM_CONFIG_REPO" "$DOOM_DIR"
+elif [[ -d "$DOOM_DIR" ]]; then
+  echo "Reusing Doom config at $DOOM_DIR"
+fi
+
+if [[ -x "$SOLVERFORGE_PATH/bin/solverforge-theme-apply" ]]; then
+  "$SOLVERFORGE_PATH/bin/solverforge-theme-apply"
+fi
+
+config_flag="--config"
+[[ -d "$DOOM_DIR" ]] && config_flag="--no-config"
+
+DOOM_BIN="$EMACS_DIR/bin/doom"
+"$DOOM_BIN" -! --doomdir "$DOOM_DIR" install "$config_flag" --env --install --hooks
+"$DOOM_BIN" --doomdir "$DOOM_DIR" sync
+env PAGER=cat "$DOOM_BIN" --doomdir "$DOOM_DIR" doctor
+
+mkdir -p "$HOME/.config/systemd/user/emacs.service.d"
+ln -sfn "$EMACS_SERVICE_OVERRIDE" \
+  "$HOME/.config/systemd/user/emacs.service.d/override.conf"
+systemctl --user daemon-reload
+systemctl --user enable emacs.service
+systemctl --user restart emacs.service
+
+echo
+echo "Doom Emacs is ready."
+echo "  GUI client: emacsclient --create-frame"
+echo "  Terminal client: emacsclient --tty"
+echo "  Shared daemon: systemctl --user status emacs.service"
+echo "  Config: $DOOM_DIR"
+echo "  Core: $EMACS_DIR"
+echo "Neovim remains installed and unchanged."

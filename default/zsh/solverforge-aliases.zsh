@@ -9,7 +9,7 @@ alias lt="$_eza -aTg"
 
 # Editors
 alias vi='vim'
-alias em='nvim'
+alias em='emacsclient --tty'
 
 # Tools
 alias cat='bat'

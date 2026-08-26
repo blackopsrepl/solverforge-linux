@@ -36,7 +36,7 @@ SUPER + Shift+Tab       Previous workspace
 SUPER + R               Enter resize mode
 SUPER + Return          Terminal (kitty)
 SUPER + Shift+B         Browser
-SUPER + Shift+M         Emacs
+SUPER + Shift+M         Doom Emacs
 SUPER + Shift+N         Notification center
 SUPER + Alt+Space       Main menu
 SUPER + Escape          System menu
