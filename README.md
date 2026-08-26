@@ -53,7 +53,7 @@ Fresh installs generate:
 - `~/.config/sway/config.d/solverforge.conf`, which includes the default Sway layer.
 - `~/.config/environment.d/solverforge.conf`, which exports `SOLVERFORGE_PATH`, PATH, `SWAYLOCK_CONFIG`, and Qt theme settings.
 - `~/.config/waybar/config` and `style.css` symlinks into the default layer.
-- `~/.config/doom/themes/solverforge-hackerman-theme.el` when a Doom config is present.
+- The bundled Doom Emacs configuration at `~/.config/doom` and its generated `themes/solverforge-hackerman-theme.el`.
 - Optional `voxtype.service` and Codex MCP registration when those tools are installed.
 
 Generated theme files under `default/theme/generated/` are not tracked. Run `solverforge-theme-apply` to materialize them from `default/theme/colors.toml`, templates, and overrides.
@@ -135,7 +135,7 @@ System and application helpers:
 
 ## Doom Emacs
 
-SolverForge installs both openSUSE Emacs packages and runs one X11-backed `emacs.service` user daemon. Terminal and graphical frames are clients of that same daemon. Doom itself lives at the XDG path `~/.config/emacs`, with its personal configuration at `~/.config/doom`.
+SolverForge installs both openSUSE Emacs packages and runs one X11-backed `emacs.service` user daemon. Terminal and graphical frames are clients of that same daemon. Doom itself lives at the XDG path `~/.config/emacs`, with a bundled SolverForge configuration seeded at `~/.config/doom` on first install. It includes the Hackerman theme, Fira Code display settings, Eglot, Treemacs, Harpoon, and the side-tree `SPC e` show/hide command.
 
 Install with the stock Doom config:
 
@@ -149,7 +149,7 @@ Or restore an existing config repository during installation:
 solverforge-doom-install https://forge.example/user/doom-config.git
 ```
 
-The installer preserves legacy Emacs init paths as timestamped backups, runs `doom sync` and `doom doctor`, wires the X11 service override, enables and restarts the distro `emacs.service` user unit, and never modifies or removes Neovim. The `SUPER + Shift+M` binding opens a graphical client frame, while `em` opens a terminal client frame. Neither command falls back to a separate Emacs process, and there is no shell alias for `emacs-x11`.
+The installer preserves legacy Emacs init paths as timestamped backups, seeds the bundled config only when no Doom config exists (or clones the supplied config repository), runs `doom sync` and `doom doctor`, wires the X11 service override, enables and restarts the distro `emacs.service` user unit, and never modifies or removes Neovim. The `SUPER + Shift+M` binding opens a graphical client frame, while `em` opens a terminal client frame. Neither command falls back to a separate Emacs process, and there is no shell alias for `emacs-x11`.
 
 ## SolverForge Linux Computer Use
 

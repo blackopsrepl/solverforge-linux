@@ -8,6 +8,7 @@ SOLVERFORGE_PATH="${SOLVERFORGE_PATH:-$HOME/.local/share/solverforge}"
 EMACS_DIR="${EMACSDIR:-$HOME/.config/emacs}"
 DOOM_DIR="${DOOMDIR:-$HOME/.config/doom}"
 EMACS_SERVICE_OVERRIDE="$SOLVERFORGE_PATH/default/systemd/emacs.service.d/override.conf"
+BUNDLED_DOOM_DIR="$SOLVERFORGE_PATH/default/doom"
 DOOM_CONFIG_REPO="${1:-${SOLVERFORGE_DOOM_CONFIG_REPO:-}}"
 DOOM_REPO="${SOLVERFORGE_DOOM_REPO:-https://github.com/doomemacs/core.git}"
 
@@ -15,9 +16,10 @@ if [[ "$DOOM_CONFIG_REPO" == "--help" || "$DOOM_CONFIG_REPO" == "-h" ]]; then
   cat <<'EOF'
 Usage: solverforge-doom-install [CONFIG_REPO_URL]
 
-Installs emacs-nox and emacs-x11, clones Doom into ~/.config/emacs, optionally
-clones a Doom config into ~/.config/doom, applies the SolverForge theme, syncs
-Doom, runs its doctor, and enables an X11-backed distro emacs user service.
+Installs emacs-nox and emacs-x11, clones Doom into ~/.config/emacs, and installs
+the bundled SolverForge Doom config into ~/.config/doom unless CONFIG_REPO_URL is
+provided. It then applies the SolverForge theme, syncs Doom, runs its doctor,
+and enables an X11-backed distro emacs user service.
 
 CONFIG_REPO_URL may also be set with SOLVERFORGE_DOOM_CONFIG_REPO.
 Existing Neovim files are never changed or removed.
@@ -70,8 +72,19 @@ if [[ ! -e "$DOOM_DIR" && -n "$DOOM_CONFIG_REPO" ]]; then
   mkdir -p "$(dirname "$DOOM_DIR")"
   echo "Cloning Doom config into $DOOM_DIR"
   git clone "$DOOM_CONFIG_REPO" "$DOOM_DIR"
+elif [[ ! -e "$DOOM_DIR" ]]; then
+  [[ -d "$BUNDLED_DOOM_DIR" ]] || {
+    echo "Bundled Doom config is missing: $BUNDLED_DOOM_DIR" >&2
+    exit 1
+  }
+  mkdir -p "$(dirname "$DOOM_DIR")"
+  echo "Installing bundled Doom config into $DOOM_DIR"
+  cp -a -- "$BUNDLED_DOOM_DIR" "$DOOM_DIR"
 elif [[ -d "$DOOM_DIR" ]]; then
   echo "Reusing Doom config at $DOOM_DIR"
+else
+  echo "Doom config path exists but is not a directory: $DOOM_DIR" >&2
+  exit 1
 fi
 
 if [[ -x "$SOLVERFORGE_PATH/bin/solverforge-theme-apply" ]]; then
