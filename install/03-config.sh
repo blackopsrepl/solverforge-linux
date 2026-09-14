@@ -2,6 +2,12 @@
 # Phase 3: Generate config files
 
 if [[ "$SOLVERFORGE_FRESH" -eq 0 ]]; then
+  environment_file="$HOME/.config/environment.d/solverforge.conf"
+  if [[ -f "$environment_file" ]] && ! grep -q '^OPENCODE_DISABLE_CLAUDE_CODE=' "$environment_file"; then
+    printf '\n# opencode: disable Claude Code interoperability (CLAUDE.md + ~/.claude/skills scanning)\nOPENCODE_DISABLE_CLAUDE_CODE=1\n' \
+      >> "$environment_file"
+    sf_success "Migrated OpenCode environment setting"
+  fi
   sf_info "Update mode — skipping config generation"
   return 0
 fi
@@ -45,6 +51,8 @@ SOLVERFORGE_PATH=${SOLVERFORGE_PATH}
 PATH=${SOLVERFORGE_PATH}/bin:\${PATH}
 SWAYLOCK_CONFIG=${SOLVERFORGE_PATH}/default/theme/generated/swaylock.conf
 QT_QPA_PLATFORMTHEME=kde
+# opencode: disable Claude Code interoperability (CLAUDE.md + ~/.claude/skills scanning)
+OPENCODE_DISABLE_CLAUDE_CODE=1
 ENV
 sf_success "Generated environment.d config"
 
