@@ -14,5 +14,4 @@
 ;; Load modular configurations
 (load! "+navigation")
 (load! "+lsp")
-(load! "+claude")
 ;; +copilot.el is intentionally preserved but not loaded.
