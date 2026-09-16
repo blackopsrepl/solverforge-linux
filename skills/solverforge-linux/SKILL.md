@@ -76,6 +76,8 @@ This skill describes SolverForge Linux `1.1.1`. Re-derive specifics from the fra
 ~/.local/share/solverforge/           # Framework root
 ├── version                           # Current framework version
 ├── README.md                         # Documentation
+├── scripts/                          # Repository installers (install-skill)
+├── skills/                           # Bundled agent skill (solverforge-linux/)
 ├── bin/                              # All scripts (solverforge-* prefix, no subdirs)
 │   ├── solverforge-menu              # Hierarchical wofi menu system
 │   ├── solverforge-theme-apply       # Theme engine (templates → generated → symlinks)

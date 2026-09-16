@@ -30,6 +30,8 @@ SolverForge Linux uses a two-layer model:
 ```text
 ~/.local/share/solverforge/ or $SOLVERFORGE_PATH
   bin/                       solverforge-* commands
+  scripts/                   repository installers (scripts/install-skill)
+  skills/                    bundled agent skill (skills/solverforge-linux)
   default/                   shared default config layer
     sway/                    compositor config
     waybar/                  bar config and style
@@ -54,6 +56,7 @@ Fresh installs generate:
 - `~/.config/environment.d/solverforge.conf`, which exports `SOLVERFORGE_PATH`, PATH, `SWAYLOCK_CONFIG`, and Qt theme settings.
 - `~/.config/waybar/config` and `style.css` symlinks into the default layer.
 - The bundled Doom Emacs configuration at `~/.config/doom` and its generated `themes/solverforge-hackerman-theme.el`.
+- The bundled agent skill, installed into the selected harness's own skills directory (opencode by default). See [Agent Skill](#agent-skill).
 - Optional `voxtype.service` and Codex MCP registration when those tools are installed.
 
 Generated theme files under `default/theme/generated/` are not tracked. Run `solverforge-theme-apply` to materialize them from `default/theme/colors.toml`, templates, and overrides.
@@ -72,7 +75,7 @@ Main pieces:
 
 ## Scripts
 
-All executable commands live in `bin/` and use the `solverforge-` prefix.
+Desktop commands live in `bin/` and use the `solverforge-` prefix. Repository installers live in `scripts/` (for example `scripts/install-skill`).
 
 Core desktop and launcher scripts:
 
