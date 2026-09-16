@@ -20,7 +20,7 @@ sf_success "Required packages installed"
 
 if [[ -t 0 ]]; then
   printf '\n'
-  sf_info "Optional packages available (neovim, btop, podman, etc.)"
+  sf_info "Optional packages available (emacs-nox, btop, podman, etc.)"
   read -rp "Install optional packages? [y/N] " answer
   if [[ "$answer" =~ ^[Yy] ]]; then
     install_from_list "$SOLVERFORGE_PATH/packages-optional.txt"

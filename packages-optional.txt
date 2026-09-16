@@ -1,6 +1,5 @@
 # SolverForge Linux — optional packages
 
-neovim
 fastfetch
 btop
 NetworkManager

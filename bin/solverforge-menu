@@ -55,7 +55,7 @@ float_interactive() {
 
 open_in_editor() {
   local file="$1"
-  local editor="${EDITOR:-nvim}"
+  local editor="${EDITOR:-emacsclient --tty}"
   local -a editor_command
   read -r -a editor_command <<< "$editor"
   setsid kitty --app-id sway-float -e "${editor_command[@]}" "$file" &>/dev/null &
@@ -182,7 +182,7 @@ show_toggle_menu() {
 
 show_tui_menu() {
   # Built-in TUI apps
-  local entries="󰙅  Yazi\n󰌌  Keybindings\n󰤥  Wifi (nmtui)\n󰂯  Bluetooth\n󰋊  Disk Usage\n󰄧  Btop\n  LazyVim\n󰄀  iPhone Camera\n  Mail\n󰃭  Calendar"
+  local entries="󰙅  Yazi\n󰌌  Keybindings\n󰤥  Wifi (nmtui)\n󰂯  Bluetooth\n󰋊  Disk Usage\n󰄧  Btop\n󰄀  iPhone Camera\n  Mail\n󰃭  Calendar"
 
   # Load user-installed TUI apps from config
   local user_cmds=()
@@ -216,7 +216,6 @@ show_tui_menu() {
   *Bluetooth*) float_term "bluetoothctl"; return ;;
   *"Disk Usage"*) float_term "df -h"; return ;;
   *Btop*) float_interactive "btop"; return ;;
-  *LazyVim*) float_interactive "nvim"; return ;;
   *"iPhone Camera"*) float_interactive "solverforge-iphone-cam"; return ;;
   *Mail*) float_interactive "solverforge-mail"; return ;;
   *Calendar*) float_interactive "solverforge-calendar"; return ;;
@@ -240,7 +239,7 @@ show_tui_menu() {
 }
 
 show_setup_menu() {
-  case $(menu "Setup" "󰕾  Audio\n󰍹  Monitors\n󰌌  Keybindings\n󰁯  Backup\n󰏗  Menu Extensions\n󰒓  SolverForge\n  Doom Emacs Config\n  LazyVim Config") in
+  case $(menu "Setup" "󰕾  Audio\n󰍹  Monitors\n󰌌  Keybindings\n󰁯  Backup\n󰏗  Menu Extensions\n󰒓  SolverForge\n  Doom Emacs Config") in
   *Audio*) setsid pavucontrol &>/dev/null & ;;
   *Monitors*) open_in_editor "$SOLVERFORGE_PATH/default/sway/output.conf" ;;
   *Keybindings*) open_in_editor "$SOLVERFORGE_PATH/default/sway/bindings.conf" ;;
@@ -248,19 +247,17 @@ show_setup_menu() {
   *"Menu Extensions"*) open_in_editor "$HOME/.config/solverforge/extensions/menu.sh" ;;
   *SolverForge*) open_in_editor "$HOME/.config/sway/config.d/solverforge.conf" ;;
   *"Doom Emacs Config"*) setsid emacsclient --create-frame "$HOME/.config/doom/config.el" &>/dev/null & ;;
-  *"LazyVim Config"*) float_interactive "nvim $HOME/.config/nvim/lua/plugins/"; return ;;
   *) show_main_menu ;;
   esac
 }
 
 show_install_menu() {
-  case $(menu "Install" "  openSUSE Package\n󰖟  Web App\n  TUI App\n󰉋  Disk App\n  Doom Emacs\n  LazyVim\n󰄀  iPhone Camera") in
+  case $(menu "Install" "  openSUSE Package\n󰖟  Web App\n  TUI App\n󰉋  Disk App\n  Doom Emacs\n󰄀  iPhone Camera") in
   *Package*) float_term "solverforge-pkg-install" ;;
   *Web*) float_term "solverforge-webapp-install" ;;
   *TUI*) float_term "solverforge-tui-install" ;;
   *Disk*) float_term "solverforge-disk-install" ;;
   *"Doom Emacs"*) float_term "solverforge-doom-install" ;;
-  *LazyVim*) float_term "solverforge-lazyvim-install" ;;
   *) show_main_menu ;;
   esac
 }

@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# SolverForge — Install Doom Emacs without removing the Neovim setup.
+# SolverForge — Install Doom Emacs.
 
 set -euo pipefail
 
@@ -22,7 +22,6 @@ provided. It then applies the SolverForge theme, syncs Doom, runs its doctor,
 and enables an X11-backed distro emacs user service.
 
 CONFIG_REPO_URL may also be set with SOLVERFORGE_DOOM_CONFIG_REPO.
-Existing Neovim files are never changed or removed.
 EOF
   exit 0
 fi
@@ -113,4 +112,3 @@ echo "  Terminal client: emacsclient --tty"
 echo "  Shared daemon: systemctl --user status emacs.service"
 echo "  Config: $DOOM_DIR"
 echo "  Core: $EMACS_DIR"
-echo "Neovim remains installed and unchanged."
