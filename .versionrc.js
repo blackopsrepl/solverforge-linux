@@ -2,7 +2,9 @@
 //
 // The config declares every version surface the release tool owns. Besides the
 // framework version file, this includes the prose version line in the bundled
-// agent skill so it cannot drift from the released version.
+// agent skill so it cannot drift from the released version. The tag prefix and
+// changelog link formats are declared explicitly so they do not depend on tool
+// defaults.
 
 const versionFile = {
   filename: 'version',
@@ -34,6 +36,10 @@ const textVersion = (pattern) => ({
 const skillVersion = textVersion(/(This skill describes SolverForge Linux `)(\d+\.\d+\.\d+)(`)/);
 
 module.exports = {
+  tagPrefix: 'v',
+  releaseCommitMessageFormat: 'chore(release): {{currentTag}}',
+  commitUrlFormat: 'https://github.com/blackopsrepl/solverforge-linux/commit/{{hash}}',
+  compareUrlFormat: 'https://github.com/blackopsrepl/solverforge-linux/compare/{{previousTag}}...{{currentTag}}',
   packageFiles: [versionFile],
   bumpFiles: [
     versionFile,
