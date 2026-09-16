@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file. See [commit-and-tag-version](https://github.com/absolute-version/commit-and-tag-version) for commit guidelines.
 
+## [1.3.0](https://github.com/blackopsrepl/solverforge-linux/compare/v1.2.0...v1.3.0) (2026-09-16)
+
+
+### Features
+
+* **editor:** make Doom Emacs the sole editor and drop LazyVim ([5a46cfd](https://github.com/blackopsrepl/solverforge-linux/commit/5a46cfd22feb7259ae90a2db32af842718cce2b7))
+
 ## [1.2.0](https://github.com/blackopsrepl/solverforge-linux/compare/v1.1.1...v1.2.0) (2026-09-16)
 
 

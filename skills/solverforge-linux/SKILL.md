@@ -15,7 +15,7 @@ description: >
 
 Manage [SolverForge Linux](https://solverforge.com) systems — a coherent configuration framework for an openSUSE Sway desktop, modeled after a "Ruby on Rails-like" layered architecture. Immutable defaults, beautiful symlink wiring, single source of truth.
 
-This skill describes SolverForge Linux `1.2.0`. Re-derive specifics from the framework checkout when the installed version differs.
+This skill describes SolverForge Linux `1.3.0`. Re-derive specifics from the framework checkout when the installed version differs.
 
 ## When This Skill MUST Be Used
 
