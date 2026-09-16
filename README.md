@@ -36,11 +36,12 @@ SolverForge Linux uses a two-layer model:
     sway/                    compositor config
     waybar/                  bar config and style
     wofi/                    launcher styling
+    kitty/                   terminal mappings
     zsh/                     shell modules
     bash/                    bash modules
-    nvim/                    LazyVim defaults
+    doom/                    bundled Doom Emacs configuration
     systemd/                 user-service overrides
-    theme/                   color source and app themes, including Doom Emacs
+    theme/                   color source, templates, and app themes
 
 ~/.config/solverforge/
   backup.conf                local backup config
@@ -55,15 +56,16 @@ Fresh installs generate:
 - `~/.config/sway/config.d/solverforge.conf`, which includes the default Sway layer.
 - `~/.config/environment.d/solverforge.conf`, which exports `SOLVERFORGE_PATH`, PATH, `SWAYLOCK_CONFIG`, and Qt theme settings.
 - `~/.config/waybar/config` and `style.css` symlinks into the default layer.
-- The bundled Doom Emacs configuration at `~/.config/doom` and its generated `themes/solverforge-hackerman-theme.el`.
 - The bundled agent skill, installed into the selected harness's own skills directory (opencode by default). See [Agent Skill](#agent-skill).
 - Optional `voxtype.service` and Codex MCP registration when those tools are installed.
+
+`install.sh` does not install an editor. Doom Emacs is an on-demand integration: run `solverforge-doom-install` or pick it from the menu's Install section. See [Doom Emacs](#doom-emacs).
 
 Generated theme files under `default/theme/generated/` are not tracked. Run `solverforge-theme-apply` to materialize them from `default/theme/colors.toml`, templates, and overrides.
 
 ## Desktop Surface
 
-The default desktop is openSUSE + Sway + Waybar + Wofi, with Kitty and Fira Code as the terminal baseline. Doom Emacs is the preferred editor; the LazyVim/Neovim path remains available.
+The default desktop is openSUSE + Sway + Waybar + Wofi, with Kitty and Fira Code as the terminal baseline. Doom Emacs is the preferred editor.
 
 Main pieces:
 
@@ -94,7 +96,6 @@ Core desktop and launcher scripts:
 - `solverforge-pkg-remove`
 - `solverforge-theme-apply`
 - `solverforge-doom-install`
-- `solverforge-lazyvim-install`
 
 Running desktop helpers:
 
@@ -181,7 +182,9 @@ the agent after installing so it rescans skill directories.
 
 ## Doom Emacs
 
-SolverForge installs both openSUSE Emacs packages and runs one X11-backed `emacs.service` user daemon. Terminal and graphical frames are clients of that same daemon. Doom itself lives at the XDG path `~/.config/emacs`, with a bundled SolverForge configuration seeded at `~/.config/doom` on first install. It includes the Hackerman theme, Fira Code display settings, Eglot, Treemacs, Harpoon, and the side-tree `SPC e` show/hide command.
+Doom Emacs is an on-demand integration; `install.sh` does not install it. `solverforge-doom-install` installs the openSUSE Emacs packages and runs one X11-backed `emacs.service` user daemon. Terminal and graphical frames are clients of that same daemon. Doom itself lives at the XDG path `~/.config/emacs`, and the bundled SolverForge configuration is copied from `default/doom` to `~/.config/doom` when no Doom config exists. It includes the Hackerman theme, Fira Code display settings, Eglot, Treemacs, Harpoon, and the side-tree `SPC e` show/hide command.
+
+The Hackerman theme is generated from `default/theme/templates/solverforge-hackerman-theme.el.tpl`; `solverforge-theme-apply` wires it into `~/.config/doom/themes/` only when a Doom config is present, so a plain desktop install is unaffected.
 
 Install with the stock Doom config:
 
@@ -195,7 +198,7 @@ Or restore an existing config repository during installation:
 solverforge-doom-install https://forge.example/user/doom-config.git
 ```
 
-The installer preserves legacy Emacs init paths as timestamped backups, seeds the bundled config only when no Doom config exists (or clones the supplied config repository), runs `doom sync` and `doom doctor`, wires the X11 service override, enables and restarts the distro `emacs.service` user unit, and never modifies or removes Neovim. The `SUPER + Shift+M` binding opens a graphical client frame, while `em` opens a terminal client frame. Neither command falls back to a separate Emacs process, and there is no shell alias for `emacs-x11`.
+The installer preserves legacy Emacs init paths as timestamped backups, seeds the bundled config only when no Doom config exists (or clones the supplied config repository), runs `doom sync` and `doom doctor`, wires the X11 service override, enables and restarts the distro `emacs.service` user unit. The `SUPER + Shift+M` binding opens a graphical client frame, while `em` opens a terminal client frame. Neither command falls back to a separate Emacs process, and there is no shell alias for `emacs-x11`.
 
 ## SolverForge Linux Computer Use
 

@@ -68,7 +68,7 @@ This skill describes SolverForge Linux `1.2.0`. Re-derive specifics from the fra
 | **Swaylock** | Lock screen | via `$SWAYLOCK_CONFIG` env var |
 | **Yazi** | File manager (TUI) | `~/.config/yazi/` |
 | **Midnight Commander** | Dual-pane file manager | `~/.config/mc/`, `~/.local/share/mc/skins/` |
-| **Neovim** | Editor (default) | `~/.config/nvim/` |
+| **Doom Emacs** | Editor (default) | `~/.config/doom/` |
 
 ## Directory Structure
 
@@ -76,6 +76,8 @@ This skill describes SolverForge Linux `1.2.0`. Re-derive specifics from the fra
 ~/.local/share/solverforge/           # Framework root
 ├── version                           # Current framework version
 ├── README.md                         # Documentation
+├── packages.txt                      # Required packages
+├── packages-optional.txt             # Optional packages
 ├── scripts/                          # Repository installers (install-skill)
 ├── skills/                           # Bundled agent skill (solverforge-linux/)
 ├── bin/                              # All scripts (solverforge-* prefix, no subdirs)
@@ -95,18 +97,16 @@ This skill describes SolverForge Linux `1.2.0`. Re-derive specifics from the fra
 │   ├── solverforge-launch-or-focus   # Launch or focus existing window
 │   ├── solverforge-backup            # Restic backup
 │   ├── solverforge-backup-prune      # Restic prune
-│   ├── solverforge-lazyvim-install   # LazyVim installer
 │   ├── solverforge-waybar-cava       # Cava audio visualizer for waybar
 │   ├── solverforge-waybar-podman     # Podman status for waybar
 │   └── solverforge-waybar-updates    # Update checker for waybar
 ├── default/                          # Immutable default layer
-│   ├── dependencies.txt              # Required packages
 │   ├── nerd-glyphs.json              # Nerd Font glyph database
 │   ├── nerd-icons.txt                # Nerd Font icon list
 │   ├── theme/                        # Theme system
 │   │   ├── colors.toml               # SINGLE SOURCE OF TRUTH for all colors
-│   │   ├── templates/                # .tpl files (17 templates)
-│   │   ├── generated/                # Output from template engine (18 files)
+│   │   ├── templates/                # .tpl files (19 templates)
+│   │   ├── generated/                # Generated output (gitignored)
 │   │   └── overrides/                # Static overrides (btop.theme)
 │   ├── sway/                         # Sway configs
 │   │   ├── autostart.conf
@@ -124,7 +124,7 @@ This skill describes SolverForge Linux `1.2.0`. Re-derive specifics from the fra
 │   │   └── banner.svg
 │   ├── kitty/                        # Kitty mappings
 │   │   └── mappings.conf
-│   ├── zsh/                          # All 11 zsh config files
+│   ├── zsh/                          # All 10 zsh config files
 │   │   ├── solverforge-envs.zsh      # Environment setup
 │   │   ├── solverforge-shell.zsh     # oh-my-zsh init
 │   │   ├── solverforge-prompt.zsh    # Agnoster prompt customization
@@ -139,14 +139,13 @@ This skill describes SolverForge Linux `1.2.0`. Re-derive specifics from the fra
 │   │   ├── rc
 │   │   ├── keybindings
 │   │   └── backup.conf
-│   └── nvim/                         # Neovim plugins
-│       ├── lazyvim.json
-│       ├── stylua.toml
-│       └── plugins/
-│           ├── solverforge-colorschemes.lua
-│           ├── solverforge-explorer.lua
-│           ├── solverforge-extras.lua
-│           └── solverforge-theme.lua
+│   ├── doom/                         # Bundled Doom Emacs configuration
+│   │   ├── init.el
+│   │   ├── config.el
+│   │   ├── packages.el
+│   │   └── snippets/
+│   └── systemd/                      # User-service overrides
+│       └── emacs.service.d/override.conf
 ```
 
 ## Theme System — The Core Architecture
@@ -292,7 +291,6 @@ Main Menu
 │   ├── Bluetooth
 │   ├── Disk Usage
 │   ├── Btop
-│   ├── LazyVim
 │   └── [user-installed TUI apps from ~/.config/solverforge/tui-apps/*.conf]
 ├── Learn (keybinding cheatsheet)
 ├── Capture
@@ -303,13 +301,13 @@ Main Menu
 ├── Setup
 │   ├── Audio, Monitors, Keybindings, Backup
 │   ├── Menu Extensions, SolverForge config
-│   └── LazyVim Config
+│   └── Doom Emacs Config
 ├── Install
 │   ├── openSUSE Package (zypper + fzf)
 │   ├── Web App (URL → .desktop)
 │   ├── TUI App (cmd → menu entry)
 │   ├── Disk App (executable path → .desktop)
-│   └── LazyVim
+│   └── Doom Emacs
 ├── Remove (mirrors Install)
 ├── About (fastfetch)
 └── System (Lock, Suspend, Hibernate, Reboot, Shutdown)
@@ -422,7 +420,7 @@ When the user requests system changes:
 - "Add lazygit to the menu" → Add entry + case to `show_tui_menu()` in `solverforge-menu`
 - "Theme a new app" → Create `.tpl`, add `wire_symlink` in theme-apply, add reload if needed
 - "Add a keybinding" → Edit `default/sway/bindings.conf` or `default/zsh/solverforge-keybindings.zsh`
-- "Install a package" → `sudo zypper install <pkg>`, add to `default/dependencies.txt`
+- "Install a package" → `sudo zypper install <pkg>`, add to `packages.txt` or `packages-optional.txt`
 - "Change the font" → Update ALL templates that reference font: kdeglobals, gtk3/4-settings, qt5ct
 - "Add a zsh alias" → Edit `default/zsh/solverforge-aliases.zsh`
 - "Wire a new config through the framework" → Template → generate → symlink → reload. Beautiful linking.

@@ -37,7 +37,7 @@ for any desktop, theme, shell, or menu change is the bundled skill at
 - `install.sh` refuses to run as root and requires openSUSE's `zypper`; never
   substitute apt or pacman.
 - Doom Emacs is not installed by `install.sh`. It is on demand via
-  `bin/solverforge-doom-install` (also in the menu), and
+  `bin/solverforge-doom-install` (menu → Install), and
   `solverforge-theme-apply` only wires the Doom theme when `~/.config/doom`
   exists.
 - `install/03-config.sh` sets `OPENCODE_DISABLE_CLAUDE_CODE=1`, which disables
