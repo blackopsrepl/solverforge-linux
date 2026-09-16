@@ -133,6 +133,49 @@ System and application helpers:
 - `solverforge-outlook-send`
 - `solverforge-computer-use`
 
+## Agent Skill
+
+The repository ships a portable, harness-agnostic Agent Skill at
+`skills/solverforge-linux/` that teaches an agent to operate and extend a
+SolverForge Linux desktop: the layered framework, Sway/Waybar/Wofi config, the
+`colors.toml` → template → generated → symlink theme pipeline, zsh modules, the
+Wofi menu system, GTK/Qt/KDE theming, and the `solverforge-*` commands. The same
+folder is discovered by opencode, Claude Code, Codex, and other Agent Skills
+harnesses.
+
+`install.sh` installs the skill automatically during setup and update. opencode
+is the default harness; choose others with a comma or space separated
+`SOLVERFORGE_SKILL_AGENTS` list:
+
+```bash
+SOLVERFORGE_SKILL_AGENTS="opencode codex" bash ./install.sh
+```
+
+With more than one harness selected, setup uses the duplicate-free `covering`
+placement automatically; set `SOLVERFORGE_SKILL_LAYOUT=per-harness` to accept
+the duplicate discovery the installer otherwise refuses.
+
+The bundled `scripts/install-skill` gives the same control as the
+`solverforge-cli` flow. It resolves each harness's own skills directory, never
+installs into a directory you did not ask for, and updates or removes only the
+copies it owns (tracked by the `.solverforge-skill` marker it writes).
+
+```bash
+./scripts/install-skill --agent opencode                          # one copy, opencode
+./scripts/install-skill --agent opencode --agent claude --layout covering
+./scripts/install-skill --agent opencode --link                   # symlink instead of copy
+./scripts/install-skill --agent opencode --project <dir>          # project scope
+./scripts/install-skill --agent opencode --list
+./scripts/install-skill --agent opencode --uninstall
+```
+
+Because opencode scans the opencode, Claude, and Agent Skills directories,
+`{opencode, claude, codex}` has no duplicate-free placement; the installer
+reports that instead of silently duplicating, and `--layout per-harness --force`
+installs all three copies while accepting the duplicate discovery. See
+`skills/README.md` for the harness directory table and ownership rules. Restart
+the agent after installing so it rescans skill directories.
+
 ## Doom Emacs
 
 SolverForge installs both openSUSE Emacs packages and runs one X11-backed `emacs.service` user daemon. Terminal and graphical frames are clients of that same daemon. Doom itself lives at the XDG path `~/.config/emacs`, with a bundled SolverForge configuration seeded at `~/.config/doom` on first install. It includes the Hackerman theme, Fira Code display settings, Eglot, Treemacs, Harpoon, and the side-tree `SPC e` show/hide command.
