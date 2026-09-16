@@ -246,7 +246,7 @@ Static files in `default/theme/overrides/` take precedence over templates. Curre
 
 ```
 ~/.zshrc → sources ~/.zsh/rc
-~/.zsh/rc → sources all 11 SolverForge zsh files (ORDER MATTERS):
+~/.zsh/rc → sources all 10 SolverForge zsh files (ORDER MATTERS):
   1. solverforge-envs.zsh      # Environment variables
   2. solverforge-shell.zsh     # oh-my-zsh initialization
   3. solverforge-prompt.zsh    # Agnoster prompt (CRITICAL — see below)
