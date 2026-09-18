@@ -62,7 +62,7 @@ CTRL + S                Fuzzy file search (fzf)
 CTRL + F                Yazi file manager
 CTRL + ALT + F          Midnight Commander
 CTRL + E                Mail (solverforge-mail)
-CTRL + Y                Calendar (solverforge-calendar)
+CTRL + Y                Calendar (planner123)
 EOF
 
 if [[ "$1" == "--dmenu" ]]; then

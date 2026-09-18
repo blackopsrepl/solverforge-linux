@@ -1,0 +1,18 @@
+#!/bin/bash
+set -euo pipefail
+
+resolved_bin=""
+
+if [[ -n "${PLANNER123_BIN:-}" && -x "${PLANNER123_BIN}" ]]; then
+  resolved_bin="${PLANNER123_BIN}"
+elif [[ -x "${HOME}/.cargo/bin/planner123" ]]; then
+  resolved_bin="${HOME}/.cargo/bin/planner123"
+fi
+
+if [[ -z "$resolved_bin" ]]; then
+  notify-send "Planner123 unavailable" \
+    "Set PLANNER123_BIN or install planner123 under ~/.cargo/bin."
+  exit 1
+fi
+
+exec "$resolved_bin" "$@"

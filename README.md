@@ -132,7 +132,7 @@ System and application helpers:
 - `solverforge-cargo-sweep`
 - `solverforge-podman-overview`
 - `solverforge-virsh-overview`
-- `solverforge-calendar` local wrapper
+- `planner123` local wrapper
 - `solverforge-mail` local wrapper
 - `solverforge-outlook-send`
 - `solverforge-computer-use`
@@ -241,7 +241,7 @@ Manual dependencies:
 - Zen browser if you want the default browser command to resolve to `zen`.
 - `voxtype` if you want push-to-talk transcription.
 - A screensaver binary if you want `solverforge-screensaver` to launch anything besides `$HOME/.cargo/bin/solverforge-screensaver`.
-- Mail and calendar binaries if you want the optional `solverforge-mail` and `solverforge-calendar` wrappers to launch local applications.
+- Mail and calendar binaries if you want the optional `solverforge-mail` and `planner123` wrappers to launch local applications.
 
 ## License
 

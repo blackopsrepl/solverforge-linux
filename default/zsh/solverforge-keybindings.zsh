@@ -75,10 +75,10 @@ bindkey -M emacs '^E' mail-widget
 bindkey -M vicmd '^E' mail-widget
 bindkey -M viins '^E' mail-widget
 
-# CTRL-Y - SolverForge Calendar
+# CTRL-Y - Planner123
 calendar-widget() {
   zle push-input
-  BUFFER="solverforge-calendar"
+  BUFFER="planner123"
   zle accept-line
 }
 zle     -N            calendar-widget

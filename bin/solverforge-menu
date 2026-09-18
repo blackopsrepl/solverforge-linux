@@ -218,7 +218,7 @@ show_tui_menu() {
   *Btop*) float_interactive "btop"; return ;;
   *"iPhone Camera"*) float_interactive "solverforge-iphone-cam"; return ;;
   *Mail*) float_interactive "solverforge-mail"; return ;;
-  *Calendar*) float_interactive "solverforge-calendar"; return ;;
+  *Calendar*) float_interactive "planner123"; return ;;
   esac
 
   # Check user-installed TUI apps
