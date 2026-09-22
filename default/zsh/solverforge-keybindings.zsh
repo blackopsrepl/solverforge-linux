@@ -64,10 +64,10 @@ bindkey -M emacs '\e^F'  mc-widget
 bindkey -M vicmd '\e^F'  mc-widget
 bindkey -M viins '\e^F'  mc-widget
 
-# CTRL-E - SolverForge Mail
+# CTRL-E - Franking
 mail-widget() {
   zle push-input
-  BUFFER="solverforge-mail"
+  BUFFER="franking"
   zle accept-line
 }
 zle     -N            mail-widget

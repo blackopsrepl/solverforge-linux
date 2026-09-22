@@ -61,7 +61,7 @@ CTRL + T                Trex
 CTRL + S                Fuzzy file search (fzf)
 CTRL + F                Yazi file manager
 CTRL + ALT + F          Midnight Commander
-CTRL + E                Mail (solverforge-mail)
+CTRL + E                Mail (franking)
 CTRL + Y                Calendar (planner123)
 EOF
 

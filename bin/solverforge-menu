@@ -217,7 +217,7 @@ show_tui_menu() {
   *"Disk Usage"*) float_term "df -h"; return ;;
   *Btop*) float_interactive "btop"; return ;;
   *"iPhone Camera"*) float_interactive "solverforge-iphone-cam"; return ;;
-  *Mail*) float_interactive "solverforge-mail"; return ;;
+  *Mail*) float_interactive "franking"; return ;;
   *Calendar*) float_interactive "planner123"; return ;;
   esac
 
