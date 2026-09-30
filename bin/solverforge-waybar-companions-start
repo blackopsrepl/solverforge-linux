@@ -68,11 +68,11 @@ if ! flock -n 9; then
   exit 0
 fi
 
-codexbar_command="$(resolve_command "$HOME/.local/bin/codexbar" codexbar)"
+tokenmaxx_command="$(resolve_command "$HOME/.local/bin/tokenmaxx" tokenmaxx)"
 repobar_command="$(resolve_command "$HOME/.local/bin/repobar" repobar)"
 trexbar_command="$(resolve_command "$HOME/.local/bin/trexbar-sway" trexbar-sway)"
 
-codexbar_config="${CODEXBAR_CONFIG:-$HOME/.codexbar/config.json}"
+tokenmaxx_config="${TOKENMAXX_CONFIG:-$HOME/.config/tokenmaxx/config.json}"
 repobar_config="${REPOBAR_CONFIG:-$HOME/.repobar/config.json}"
 trexbar_config="${TREXBAR_SWAY_CONFIG:-$HOME/.config/trexbar-sway/config.json}"
 
@@ -82,7 +82,7 @@ fi
 
 log "monitoring waybar companion daemons"
 while true; do
-  start_daemon_if_missing codexbar "$codexbar_command" "$codexbar_config"
+  start_daemon_if_missing tokenmaxx "$tokenmaxx_command" "$tokenmaxx_config"
   start_daemon_if_missing repobar "$repobar_command" "$repobar_config"
   start_daemon_if_missing trexbar-sway "$trexbar_command" "$trexbar_config"
   sleep 10

@@ -114,7 +114,7 @@ Waybar modules and companions:
 - `solverforge-waybar-start`
 - `solverforge-waybar-companions-start`
 - `solverforge-waybar-cava`
-- `solverforge-waybar-codexbar`
+- `solverforge-waybar-tokenmaxx`
 - `solverforge-waybar-repobar`
 - `solverforge-waybar-trexbar`
 - `solverforge-waybar-power-profile`

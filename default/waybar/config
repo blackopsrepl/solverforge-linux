@@ -110,15 +110,15 @@
     "tooltip": false,
     "hide-empty-text": true
   },
-  "custom/codexbar": {
-    "exec": "solverforge-waybar-codexbar",
+  "custom/tokenmaxx": {
+    "exec": "solverforge-waybar-tokenmaxx",
     "return-type": "json",
     "interval": 15,
     "signal": 9,
     "tooltip": true,
-    "on-click": "solverforge-waybar-codexbar open",
-    "on-click-middle": "solverforge-waybar-codexbar refresh",
-    "on-click-right": "solverforge-waybar-codexbar open"
+    "on-click": "solverforge-waybar-tokenmaxx open",
+    "on-click-middle": "solverforge-waybar-tokenmaxx refresh",
+    "on-click-right": "solverforge-waybar-tokenmaxx open"
   },
   "custom/repobar": {
     "exec": "solverforge-waybar-repobar",

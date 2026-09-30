@@ -68,7 +68,7 @@ tooltip label {
 #network,
 #bluetooth,
 #pulseaudio,
-#custom-codexbar,
+#custom-tokenmaxx,
 #custom-repobar,
 #custom-trexbar,
 #custom-voxtype,
@@ -99,7 +99,7 @@ tooltip label {
 #network:hover,
 #bluetooth:hover,
 #pulseaudio:hover,
-#custom-codexbar:hover,
+#custom-tokenmaxx:hover,
 #custom-repobar:hover,
 #custom-trexbar:hover,
 #custom-voxtype:hover,
@@ -221,7 +221,7 @@ tooltip label {
     color: @text-dim;
 }
 
-#custom-codexbar {
+#custom-tokenmaxx {
     color: @teal-bright;
     min-width: 0;
     padding: 2px 6px;
@@ -230,100 +230,100 @@ tooltip label {
     box-shadow: 0 0 10px alpha(@teal, 0.10);
 }
 
-#custom-codexbar.error {
+#custom-tokenmaxx.error {
     color: @crit;
     border-color: alpha(@crit, 0.45);
     box-shadow: 0 0 12px alpha(@crit, 0.22);
 }
 
-#custom-codexbar.partial {
+#custom-tokenmaxx.partial {
     color: @warn;
     border-color: alpha(@warn, 0.35);
     box-shadow: 0 0 8px alpha(@warn, 0.12);
 }
 
-#custom-codexbar.stale {
+#custom-tokenmaxx.stale {
     color: @text-dim;
     border-color: alpha(@text-dim, 0.35);
 }
 
-#custom-codexbar.loading {
+#custom-tokenmaxx.loading {
     color: @teal-dim;
 }
 
-#custom-codexbar.healthy {
+#custom-tokenmaxx.healthy {
     color: @teal-bright;
 }
 
-#custom-codexbar.warning {
+#custom-tokenmaxx.warning {
     color: @warn;
     border-color: alpha(@warn, 0.40);
     box-shadow: 0 0 12px alpha(@warn, 0.18);
 }
 
-#custom-codexbar.critical {
+#custom-tokenmaxx.critical {
     color: @crit;
     border-color: alpha(@crit, 0.45);
     box-shadow: 0 0 14px alpha(@crit, 0.24);
     animation: crit-glow 2s steps(12) infinite;
 }
 
-#custom-codexbar.pace-hot {
+#custom-tokenmaxx.pace-hot {
     background-color: alpha(@crit, 0.10);
 }
 
-#custom-codexbar.pace-reserve {
+#custom-tokenmaxx.pace-reserve {
     background-color: alpha(@green, 0.10);
 }
 
-#custom-codexbar.pace-even {
+#custom-tokenmaxx.pace-even {
     background-color: alpha(@teal, 0.08);
 }
 
-#custom-codexbar.mode-pinned {
+#custom-tokenmaxx.mode-pinned {
     border-style: solid;
 }
 
-#custom-codexbar.mode-auto {
+#custom-tokenmaxx.mode-auto {
     border-style: dashed;
 }
 
-#custom-codexbar.provider-codex,
-#custom-codexbar.codex {
+#custom-tokenmaxx.provider-codex,
+#custom-tokenmaxx.codex {
     color: @teal-bright;
     border-color: alpha(@teal, 0.38);
     box-shadow: 0 0 12px alpha(@teal, 0.14);
 }
 
-#custom-codexbar.provider-claude,
-#custom-codexbar.claude {
+#custom-tokenmaxx.provider-claude,
+#custom-tokenmaxx.claude {
     color: @warn;
     border-color: alpha(@warn, 0.42);
     box-shadow: 0 0 12px alpha(@warn, 0.18);
 }
 
-#custom-codexbar.provider-gemini,
-#custom-codexbar.gemini {
+#custom-tokenmaxx.provider-gemini,
+#custom-tokenmaxx.gemini {
     color: @info;
     border-color: alpha(@info, 0.42);
     box-shadow: 0 0 12px alpha(@info, 0.18);
 }
 
-#custom-codexbar.partial,
-#custom-codexbar.warning {
+#custom-tokenmaxx.partial,
+#custom-tokenmaxx.warning {
     color: @warn;
     border-color: alpha(@warn, 0.40);
     box-shadow: 0 0 12px alpha(@warn, 0.18);
 }
 
-#custom-codexbar.error,
-#custom-codexbar.critical {
+#custom-tokenmaxx.error,
+#custom-tokenmaxx.critical {
     color: @crit;
     border-color: alpha(@crit, 0.45);
     box-shadow: 0 0 14px alpha(@crit, 0.24);
 }
 
-#custom-codexbar.stale {
+#custom-tokenmaxx.stale {
     color: @text-dim;
     border-color: alpha(@text-dim, 0.35);
     box-shadow: none;
