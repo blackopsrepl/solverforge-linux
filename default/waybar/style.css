@@ -71,6 +71,7 @@ tooltip label {
 #custom-tokenmaxx,
 #custom-repobar,
 #custom-trexbar,
+#custom-switchyard,
 #custom-voxtype,
 #custom-podman,
 #custom-ollama,
@@ -102,6 +103,7 @@ tooltip label {
 #custom-tokenmaxx:hover,
 #custom-repobar:hover,
 #custom-trexbar:hover,
+#custom-switchyard:hover,
 #custom-voxtype:hover,
 #custom-podman:hover,
 #custom-ollama:hover,
@@ -366,6 +368,53 @@ tooltip label {
     color: @crit;
     border-color: alpha(@crit, 0.45);
     box-shadow: 0 0 12px alpha(@crit, 0.20);
+}
+
+/* ─── Switchyard: Rails dev environments ───────────────────────── */
+
+#custom-switchyard {
+    color: @teal-bright;
+    min-width: 0;
+    padding: 2px 6px;
+    background-color: alpha(@bg-dark, 0.76);
+    border-color: alpha(@info, 0.30);
+    box-shadow: 0 0 10px alpha(@info, 0.10);
+}
+
+#custom-switchyard.healthy {
+    color: @teal-bright;
+    border-color: alpha(@teal, 0.35);
+}
+
+#custom-switchyard.loading {
+    color: @text-dim;
+    border-color: alpha(@text-dim, 0.35);
+    box-shadow: none;
+}
+
+/* Order matters: both classes are present on a failing chip, specificity is
+   equal, so the LAST matching rule wins. has-restarts must come first or its
+   warn tone would override the failure tone below it. */
+#custom-switchyard.has-restarts {
+    color: @warn;
+    border-color: alpha(@warn, 0.38);
+    box-shadow: 0 0 10px alpha(@warn, 0.14);
+}
+
+#custom-switchyard.has-failures {
+    color: @crit;
+    border-color: alpha(@crit, 0.45);
+    box-shadow: 0 0 12px alpha(@crit, 0.20);
+}
+
+/* The shim renders this when Switchyard is not installed: no chip at all,
+   rather than an empty bordered box sitting in the bar. */
+#custom-switchyard.empty {
+    background-color: transparent;
+    border: none;
+    box-shadow: none;
+    padding: 0;
+    margin: 0;
 }
 
 #custom-trexbar {

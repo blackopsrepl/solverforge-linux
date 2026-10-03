@@ -1,0 +1,30 @@
+#!/bin/bash
+
+config_path="${SWITCHYARD_CONFIG:-$HOME/.switchyard/config.json}"
+switchyard_cmd="${SWITCHYARD_BIN:-$HOME/.local/bin/switchyard}"
+
+if [[ ! -x "$switchyard_cmd" ]] && command -v switchyard &>/dev/null; then
+    switchyard_cmd="$(command -v switchyard)"
+fi
+
+# Not installed: render nothing rather than a broken chip. Waybar keeps the
+# module in the layout, so a machine without Switchyard simply shows no chip.
+if [[ ! -x "$switchyard_cmd" ]]; then
+    printf '{"text": "", "class": ["empty"], "tooltip": "Switchyard is not installed"}\n'
+    exit 0
+fi
+
+case "${1:-render}" in
+    render)
+        exec "$switchyard_cmd" waybar render --config "$config_path"
+        ;;
+    panel|details|open)
+        exec "$switchyard_cmd" panel --config "$config_path"
+        ;;
+    refresh)
+        exec "$switchyard_cmd" waybar refresh --config "$config_path"
+        ;;
+    *)
+        exec "$switchyard_cmd" waybar render --config "$config_path"
+        ;;
+esac

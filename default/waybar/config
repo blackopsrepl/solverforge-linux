@@ -22,6 +22,7 @@
     "custom/notifications"
   ],
   "modules-right": [
+    "custom/switchyard",
     "cpu",
     "memory",
     "temperature",
@@ -139,6 +140,16 @@
     "on-click": "solverforge-waybar-trexbar open",
     "on-click-middle": "solverforge-waybar-trexbar refresh",
     "on-click-right": "solverforge-waybar-trexbar open"
+  },
+  "custom/switchyard": {
+    "exec": "solverforge-waybar-switchyard",
+    "return-type": "json",
+    "interval": 15,
+    "signal": 15,
+    "tooltip": true,
+    "on-click": "solverforge-waybar-switchyard open",
+    "on-click-middle": "solverforge-waybar-switchyard refresh",
+    "on-click-right": "solverforge-waybar-switchyard open"
   },
   "custom/podman": {
     "exec": "solverforge-waybar-podman",
