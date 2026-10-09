@@ -1,0 +1,16 @@
+#!/bin/bash
+
+# SolverForge — launch the desktop file manager.
+#
+# Single entry point for every way the file manager is started: the Sway
+# binding, the menu, the .desktop entry (so xdg-open and GTK file choosers get
+# it too) and the CLI. Keeping the launch recipe in one file is what makes
+# "open a folder" and "$mod+Shift+f" produce the same window.
+#
+# GTK_THEME is per-process: it gives this app the SolverForge palette from
+# ~/.local/share/themes/SolverForge-Files without touching the session theme or
+# its gsettings, which the desktop's own exec_always owns.
+
+SOLVERFORGE_FILES_THEME="${SOLVERFORGE_FILES_THEME:-SolverForge-Files}"
+
+exec env GTK_THEME="$SOLVERFORGE_FILES_THEME" thunar "$@"

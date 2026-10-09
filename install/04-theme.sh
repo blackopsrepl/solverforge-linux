@@ -1,5 +1,16 @@
 #!/bin/bash
 # Phase 4: Apply theme
+#
+# Migrations run first: they retire generated files and config symlinks left
+# behind by earlier framework versions, so the theme engine starts from a clean
+# slate. Each migration is idempotent.
+
+shopt -s nullglob
+for migration in "$SOLVERFORGE_PATH"/migrations/*.sh; do
+  # shellcheck source=/dev/null
+  source "$migration"
+done
+shopt -u nullglob
 
 sf_info "Applying SolverForge theme..."
 

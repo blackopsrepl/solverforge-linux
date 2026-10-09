@@ -14,6 +14,10 @@ for any desktop, theme, shell, or menu change is the bundled skill at
   `return 0` skips a phase, `exit 1` aborts the whole install.
   `sf_info|sf_warn|sf_error|sf_success` come from `install/helpers/log.sh` and
   `sf_guard_*` from `install/helpers/guard.sh`. Add a phase as `install/0N-*.sh`.
+- `migrations/*.sh` are sourced by phase 4 (`install/04-theme.sh`) **before** the
+  theme is applied: one-off, idempotent fixups for trees that predate a change
+  (renamed or retired generated files, moved config paths). A migration must
+  no-op on its second run — guard on the artifact, never on a marker file.
 - `boot.sh` (distributed as `curl | bash`) clones or fast-forwards
   `~/.local/share/solverforge`, then execs `install.sh`.
 - `bin/solverforge-*` are the runtime commands (extensionless; mostly bash, with

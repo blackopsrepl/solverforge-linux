@@ -19,6 +19,5 @@ solaar
 emacs-nox
 emacs-x11
 tmux
-yazi
 mc
 lazygit

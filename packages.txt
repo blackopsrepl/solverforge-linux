@@ -26,6 +26,13 @@ git-delta
 # Theming
 qt5ct
 qt6ct
+# GTK apps (Thunar and the rest) theme through Breeze, not Adwaita: the palette
+# in gtk-colors.css overrides the *_breeze color names that Breeze aliases, while
+# Adwaita's widget rules hardcode their hex values. kf6-breeze-icons supplies the
+# breeze-dark icon set gtk{3,4}-settings.ini names.
+gtk3-metatheme-breeze6
+gtk4-metatheme-breeze6
+kf6-breeze-icons
 
 # Fonts (Nerd Fonts — symbols-only available via zypper, FiraCode Nerd Font is manual)
 symbols-only-nerd-fonts

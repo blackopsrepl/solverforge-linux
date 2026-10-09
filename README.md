@@ -232,7 +232,7 @@ The publish tree should not contain username-specific paths, local DBs, generate
 
 Required packages are listed in `packages.txt` and installed by `install/02-packages.sh`.
 
-Optional packages are listed in `packages-optional.txt`. Optional integrations should degrade cleanly when their commands are absent. Notable optional integrations include `emacs-nox`, `emacs-x11`, `cava`, `podman`, `virsh`, `ollama`, `voxtype`, `plasma6-workspace`, `python313-python-xlib`, `tmux`, `yazi`, `mc`, and `lazygit`.
+Optional packages are listed in `packages-optional.txt`. Optional integrations should degrade cleanly when their commands are absent. Notable optional integrations include `emacs-nox`, `emacs-x11`, `cava`, `podman`, `virsh`, `ollama`, `voxtype`, `plasma6-workspace`, `python313-python-xlib`, `tmux`, `mc`, and `lazygit`.
 
 Manual dependencies:
 

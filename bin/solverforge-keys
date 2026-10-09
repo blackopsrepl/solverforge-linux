@@ -37,6 +37,7 @@ SUPER + R               Enter resize mode
 SUPER + Return          Terminal (kitty)
 SUPER + Shift+B         Browser
 SUPER + Shift+M         Doom Emacs
+SUPER + Shift+F         Files (Thunar)
 SUPER + Shift+N         Notification center
 SUPER + Alt+Space       Main menu
 SUPER + Escape          System menu
@@ -59,7 +60,6 @@ XF86AudioPrev           Previous track
 ── Terminal (zsh) ──────────────────────────
 CTRL + T                Trex
 CTRL + S                Fuzzy file search (fzf)
-CTRL + F                Yazi file manager
 CTRL + ALT + F          Midnight Commander
 CTRL + E                Mail (franking)
 CTRL + Y                Calendar (planner123)

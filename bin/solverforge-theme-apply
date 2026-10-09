@@ -56,7 +56,7 @@ for tpl in "$TEMPLATES_DIR"/*.tpl; do
   output_path="$GENERATED_DIR/$filename"
 
   # Don't overwrite files already placed by overrides
-  if [[ ! -f $output_path ]]; then
+  if [[ ! -f $OVERRIDES_DIR/$filename ]]; then
     sed -f "$sed_script" "$tpl" >"$output_path"
   fi
 done
@@ -92,8 +92,15 @@ wire_symlink "$GENERATED_DIR/btop.theme" "$HOME/.config/btop/themes/hackerman.th
 # lazygit: config
 wire_symlink "$GENERATED_DIR/lazygit.yml" "$HOME/.config/lazygit/config.yml"
 
-# yazi: theme
-wire_symlink "$GENERATED_DIR/yazi-theme.toml" "$HOME/.config/yazi/theme.toml"
+# File manager: per-app GTK overlay. Installed as its own theme directory so the
+# binding can load it with GTK_THEME=<name> for the file manager process only —
+# the session theme and its gsettings are untouched.
+wire_symlink "$GENERATED_DIR/thunar-gtk.css" "$HOME/.local/share/themes/SolverForge-Files/gtk-3.0/gtk.css"
+
+# File manager: .desktop entry. xdg-open, GTK file choosers and the app grid all
+# start the file manager through this, so the launch recipe stays in one place
+# (bin/solverforge-file-manager) and every entry point gets the palette.
+wire_symlink "$SOLVERFORGE_PATH/default/applications/thunar.desktop" "$HOME/.local/share/applications/thunar.desktop"
 
 # mc: skin
 wire_symlink "$GENERATED_DIR/mc-hackerman.ini" "$HOME/.local/share/mc/skins/hackerman.ini"

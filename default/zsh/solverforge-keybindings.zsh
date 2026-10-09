@@ -42,17 +42,6 @@ bindkey -M emacs '^S' fzf-file-widget
 bindkey -M vicmd '^S' fzf-file-widget
 bindkey -M viins '^S' fzf-file-widget
 
-# CTRL-F - Yazi file manager
-yazi-widget() {
-  zle push-input
-  BUFFER="yazi"
-  zle accept-line
-}
-zle     -N            yazi-widget
-bindkey -M emacs '^F' yazi-widget
-bindkey -M vicmd '^F' yazi-widget
-bindkey -M viins '^F' yazi-widget
-
 # CTRL-ALT-F - Midnight Commander
 mc-widget() {
   zle push-input
