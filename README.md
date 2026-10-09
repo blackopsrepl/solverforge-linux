@@ -72,7 +72,7 @@ Main pieces:
 - `solverforge-menu`: Wofi-based hierarchical menu for apps, TUI tools, capture, setup, install/remove flows, power profiles, and system actions.
 - `default/sway/bindings.conf`: keybindings for launchers, copy/paste, scratchpad, layouts, key guide, browser launch, Wayscriber, and keyboard layout cycling.
 - `default/sway/autostart.conf`: tray bridge, Waybar launcher, companion Waybar daemons, status-notifier waits, and idle/screensaver integration.
-- `default/waybar/config`: floating Waybar island with workspaces, scratchpad, voxtype, cava, Codexbar, Repobar, Trexbar, system metrics, Podman, Ollama, Virsh, updates, tray, power profile, and power menu.
+- `default/waybar/config`: floating Waybar island with workspaces, scratchpad, voxtype, cava, Codexbar, Repobar, system metrics, Podman, Ollama, Virsh, updates, tray, power profile, and power menu.
 - `default/waybar/style.css`: Hackerman Waybar styling used by the running setup.
 
 ## Scripts
@@ -116,7 +116,6 @@ Waybar modules and companions:
 - `solverforge-waybar-cava`
 - `solverforge-waybar-tokenmaxx`
 - `solverforge-waybar-repobar`
-- `solverforge-waybar-trexbar`
 - `solverforge-waybar-power-profile`
 - `solverforge-waybar-notifications`
 - `solverforge-waybar-ollama`

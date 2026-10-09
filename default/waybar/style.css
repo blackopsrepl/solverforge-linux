@@ -70,7 +70,6 @@ tooltip label {
 #pulseaudio,
 #custom-tokenmaxx,
 #custom-repobar,
-#custom-trexbar,
 #custom-switchyard,
 #custom-voxtype,
 #custom-podman,
@@ -102,7 +101,6 @@ tooltip label {
 #pulseaudio:hover,
 #custom-tokenmaxx:hover,
 #custom-repobar:hover,
-#custom-trexbar:hover,
 #custom-switchyard:hover,
 #custom-voxtype:hover,
 #custom-podman:hover,
@@ -415,61 +413,6 @@ tooltip label {
     box-shadow: none;
     padding: 0;
     margin: 0;
-}
-
-#custom-trexbar {
-    color: @green-bright;
-    min-width: 0;
-    padding: 2px 6px;
-    background-color: alpha(@bg-dark, 0.76);
-    border-color: alpha(@green, 0.30);
-    box-shadow: 0 0 10px alpha(@green, 0.10);
-}
-
-#custom-trexbar.healthy {
-    color: @green-bright;
-    border-color: alpha(@green, 0.35);
-}
-
-#custom-trexbar.loading,
-#custom-trexbar.stale {
-    color: @text-dim;
-    border-color: alpha(@text-dim, 0.35);
-    box-shadow: none;
-}
-
-#custom-trexbar.no-sessions {
-    color: @text-dim;
-    border-color: alpha(@text-dim, 0.28);
-}
-
-#custom-trexbar.has-agents {
-    background-color: alpha(@teal, 0.08);
-    border-color: alpha(@teal, 0.38);
-}
-
-#custom-trexbar.has-attached {
-    border-style: solid;
-}
-
-#custom-trexbar.dirty-repos {
-    background-color: alpha(@warn, 0.08);
-}
-
-#custom-trexbar.high-cpu,
-#custom-trexbar.high-memory,
-#custom-trexbar.warning {
-    color: @warn;
-    border-color: alpha(@warn, 0.40);
-    box-shadow: 0 0 12px alpha(@warn, 0.18);
-}
-
-#custom-trexbar.error,
-#custom-trexbar.critical {
-    color: @crit;
-    border-color: alpha(@crit, 0.45);
-    box-shadow: 0 0 14px alpha(@crit, 0.24);
-    animation: crit-glow 2s steps(12) infinite;
 }
 
 /* Warning / Critical states */

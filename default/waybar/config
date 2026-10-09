@@ -14,8 +14,7 @@
     "sway/language",
     "pulseaudio",
     "custom/codexbar",
-    "custom/repobar",
-    "custom/trexbar"
+    "custom/repobar"
   ],
   "modules-center": [
     "clock",
@@ -130,16 +129,6 @@
     "on-click": "solverforge-waybar-repobar open",
     "on-click-middle": "solverforge-waybar-repobar refresh",
     "on-click-right": "solverforge-waybar-repobar open"
-  },
-  "custom/trexbar": {
-    "exec": "solverforge-waybar-trexbar",
-    "return-type": "json",
-    "interval": 10,
-    "signal": 11,
-    "tooltip": true,
-    "on-click": "solverforge-waybar-trexbar open",
-    "on-click-middle": "solverforge-waybar-trexbar refresh",
-    "on-click-right": "solverforge-waybar-trexbar open"
   },
   "custom/switchyard": {
     "exec": "solverforge-waybar-switchyard",
