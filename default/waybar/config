@@ -21,12 +21,12 @@
     "custom/notifications"
   ],
   "modules-right": [
-    "custom/switchyard",
     "cpu",
     "memory",
     "temperature",
     "disk",
     "custom/podman",
+    "custom/switchyard",
     "custom/ollama",
     "custom/virsh",
     "custom/updates",
