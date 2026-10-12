@@ -71,6 +71,9 @@ tooltip label {
 #custom-tokenmaxx,
 #custom-repobar,
 #custom-switchyard,
+#custom-cronbar,
+#custom-benchbar,
+#custom-backupbar,
 #custom-voxtype,
 #custom-podman,
 #custom-ollama,
@@ -84,7 +87,7 @@ tooltip label {
     background-color: alpha(@bg-dark, 0.65);
     border: 1px solid alpha(@teal, 0.15);
     border-radius: 3px;
-    padding: 2px 12px;
+    padding: 2px 8px;
     margin: 4px 1px;
     transition-property: background-color, color, box-shadow, border-color;
     transition-duration: 0.3s;
@@ -102,6 +105,9 @@ tooltip label {
 #custom-tokenmaxx:hover,
 #custom-repobar:hover,
 #custom-switchyard:hover,
+#custom-cronbar:hover,
+#custom-benchbar:hover,
+#custom-backupbar:hover,
 #custom-voxtype:hover,
 #custom-podman:hover,
 #custom-ollama:hover,
@@ -403,6 +409,56 @@ tooltip label {
     color: @crit;
     border-color: alpha(@crit, 0.45);
     box-shadow: 0 0 12px alpha(@crit, 0.20);
+}
+
+/* ─── Chip family: cronbar, benchbar, backupbar ──────────────────── */
+/* These three chips exist only on some machines, so their rules live in this
+   self-contained block. Same visual grammar as the rest of the family: bg-dark
+   chip, teal rest state, warn for attention, crit for failure. Classes are the
+   ones each tool actually emits. */
+
+#custom-cronbar,
+#custom-benchbar,
+#custom-backupbar {
+    color: @teal-bright;
+    min-width: 0;
+    padding: 2px 6px;
+    background-color: alpha(@bg-dark, 0.76);
+    border: 1px solid alpha(@info, 0.30);
+    border-radius: 3px;
+    box-shadow: 0 0 10px alpha(@info, 0.10);
+}
+
+#custom-cronbar.has-commented,
+#custom-cronbar.has-sudo,
+#custom-cronbar.soon,
+#custom-benchbar.warning,
+#custom-benchbar.info,
+#custom-backupbar.warning,
+#custom-backupbar.attention {
+    color: @warn;
+    border-color: alpha(@warn, 0.38);
+    box-shadow: 0 0 10px alpha(@warn, 0.14);
+}
+
+#custom-cronbar.has-errors,
+#custom-benchbar.critical,
+#custom-benchbar.source-error,
+#custom-benchbar.has-result-issues,
+#custom-backupbar.critical {
+    color: @crit;
+    border-color: alpha(@crit, 0.45);
+    box-shadow: 0 0 12px alpha(@crit, 0.20);
+}
+
+#custom-cronbar.no-jobs,
+#custom-benchbar.stale,
+#custom-benchbar.idle,
+#custom-backupbar.stale,
+#custom-backupbar.unknown {
+    color: @text-dim;
+    border-color: alpha(@text-dim, 0.35);
+    box-shadow: none;
 }
 
 /* The shim renders this when Switchyard is not installed: no chip at all,

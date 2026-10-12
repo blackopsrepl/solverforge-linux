@@ -13,8 +13,11 @@
     "custom/cava",
     "sway/language",
     "pulseaudio",
-    "custom/codexbar",
-    "custom/repobar"
+    "custom/tokenmaxx",
+    "custom/repobar",
+    "custom/benchbar",
+    "custom/backupbar",
+    "custom/cronbar"
   ],
   "modules-center": [
     "clock",
@@ -105,70 +108,6 @@
     "tooltip": false,
     "on-click": "solverforge-menu"
   },
-  "custom/cava": {
-    "exec": "solverforge-waybar-cava",
-    "tooltip": false,
-    "hide-empty-text": true
-  },
-  "custom/tokenmaxx": {
-    "exec": "solverforge-waybar-tokenmaxx",
-    "return-type": "json",
-    "interval": 15,
-    "signal": 9,
-    "tooltip": true,
-    "on-click": "solverforge-waybar-tokenmaxx open",
-    "on-click-middle": "solverforge-waybar-tokenmaxx refresh",
-    "on-click-right": "solverforge-waybar-tokenmaxx open"
-  },
-  "custom/repobar": {
-    "exec": "solverforge-waybar-repobar",
-    "return-type": "json",
-    "interval": 60,
-    "signal": 10,
-    "tooltip": true,
-    "on-click": "solverforge-waybar-repobar open",
-    "on-click-middle": "solverforge-waybar-repobar refresh",
-    "on-click-right": "solverforge-waybar-repobar open"
-  },
-  "custom/switchyard": {
-    "exec": "solverforge-waybar-switchyard",
-    "return-type": "json",
-    "interval": 15,
-    "signal": 15,
-    "tooltip": true,
-    "on-click": "solverforge-waybar-switchyard open",
-    "on-click-middle": "solverforge-waybar-switchyard refresh",
-    "on-click-right": "solverforge-waybar-switchyard open"
-  },
-  "custom/podman": {
-    "exec": "solverforge-waybar-podman",
-    "return-type": "json",
-    "interval": 10,
-    "tooltip": true,
-    "on-click": "setsid kitty --app-id sway-float-wide -e solverforge-podman-overview &>/dev/null &"
-  },
-  "custom/ollama": {
-    "exec": "solverforge-waybar-ollama",
-    "return-type": "json",
-    "interval": 10,
-    "tooltip": true,
-    "on-click": "setsid kitty --app-id sway-float-wide -e watch -n2 ollama ps &>/dev/null &"
-  },
-  "custom/virsh": {
-    "exec": "solverforge-waybar-virsh",
-    "return-type": "json",
-    "interval": 10,
-    "tooltip": true,
-    "on-click": "setsid kitty --app-id sway-float-wide -e solverforge-virsh-overview &>/dev/null &"
-  },
-  "custom/updates": {
-    "exec": "solverforge-waybar-updates",
-    "return-type": "json",
-    "interval": 3600,
-    "tooltip": true,
-    "on-click": "setsid kitty --app-id sway-float -e solverforge-pkg-install &>/dev/null &",
-    "signal": 8
-  },
   "network": {
     "format-wifi": "  {signalStrength}%",
     "format-ethernet": "󰈀  {ipaddr}",
@@ -222,35 +161,6 @@
     "tooltip": true,
     "tooltip-format": "{desc}\n{volume}%"
   },
-  "custom/voxtype": {
-    "exec": "solverforge-waybar-voxtype",
-    "return-type": "json",
-    "format": "{icon}",
-    "format-icons": {
-      "idle": "󰍬",
-      "recording": "󰍬",
-      "transcribing": "󰗊",
-      "stopped": "󰍭"
-    },
-    "tooltip": true,
-    "on-click": "systemctl --user restart voxtype.service"
-  },
-  "custom/notifications": {
-    "exec": "solverforge-waybar-notifications",
-    "return-type": "json",
-    "interval": 1,
-    "tooltip": true,
-    "on-click": "swaync-client -t",
-    "on-click-right": "swaync-client -C"
-  },
-  "custom/power-profile": {
-    "exec": "solverforge-waybar-power-profile",
-    "return-type": "json",
-    "interval": 5,
-    "tooltip": true,
-    "on-click": "solverforge-menu power",
-    "on-click-right": "solverforge-menu system"
-  },
   "clock": {
     "format": "  {:%H:%M}",
     "format-alt": "  {:%a %b %d %Y}",
@@ -278,10 +188,133 @@
     "icon-size": 16,
     "spacing": 8
   },
+  "custom/voxtype": {
+    "exec": "solverforge-waybar-voxtype",
+    "return-type": "json",
+    "format": "{icon}",
+    "format-icons": {
+      "idle": "󰍬",
+      "recording": "󰍬",
+      "transcribing": "󰗊",
+      "stopped": "󰍭"
+    },
+    "tooltip": true,
+    "on-click": "systemctl --user restart voxtype.service"
+  },
+  "custom/cava": {
+    "exec": "solverforge-waybar-cava",
+    "tooltip": false,
+    "hide-empty-text": true
+  },
+  "custom/tokenmaxx": {
+    "exec": "solverforge-waybar-tokenmaxx",
+    "return-type": "json",
+    "interval": 15,
+    "signal": 9,
+    "tooltip": true,
+    "on-click": "solverforge-waybar-tokenmaxx open",
+    "on-click-middle": "solverforge-waybar-tokenmaxx refresh",
+    "on-click-right": "solverforge-waybar-tokenmaxx open"
+  },
+  "custom/repobar": {
+    "exec": "solverforge-waybar-repobar",
+    "return-type": "json",
+    "interval": 60,
+    "signal": 10,
+    "tooltip": true,
+    "on-click": "solverforge-waybar-repobar open",
+    "on-click-middle": "solverforge-waybar-repobar refresh",
+    "on-click-right": "solverforge-waybar-repobar open"
+  },
+  "custom/benchbar": {
+    "exec": "solverforge-waybar-benchbar",
+    "return-type": "json",
+    "interval": 10,
+    "signal": 12,
+    "tooltip": true,
+    "on-click": "solverforge-waybar-benchbar open",
+    "on-click-middle": "solverforge-waybar-benchbar refresh",
+    "on-click-right": "solverforge-waybar-benchbar open"
+  },
+  "custom/backupbar": {
+    "exec": "solverforge-waybar-backupbar",
+    "return-type": "json",
+    "interval": 60,
+    "signal": 13,
+    "tooltip": true,
+    "on-click": "solverforge-waybar-backupbar panel",
+    "on-click-middle": "solverforge-waybar-backupbar refresh",
+    "on-click-right": "solverforge-waybar-backupbar panel"
+  },
+  "custom/cronbar": {
+    "exec": "solverforge-waybar-cronbar",
+    "return-type": "json",
+    "interval": 60,
+    "signal": 14,
+    "tooltip": true,
+    "on-click": "solverforge-waybar-cronbar panel",
+    "on-click-middle": "solverforge-waybar-cronbar refresh",
+    "on-click-right": "solverforge-waybar-cronbar panel"
+  },
+  "custom/podman": {
+    "exec": "solverforge-waybar-podman",
+    "return-type": "json",
+    "interval": 10,
+    "tooltip": true,
+    "on-click": "setsid kitty --app-id sway-float-wide -e solverforge-podman-overview &>/dev/null &"
+  },
+  "custom/switchyard": {
+    "exec": "solverforge-waybar-switchyard",
+    "return-type": "json",
+    "interval": 15,
+    "signal": 15,
+    "tooltip": true,
+    "on-click": "solverforge-waybar-switchyard open",
+    "on-click-middle": "solverforge-waybar-switchyard refresh",
+    "on-click-right": "solverforge-waybar-switchyard open"
+  },
+  "custom/ollama": {
+    "exec": "solverforge-waybar-ollama",
+    "return-type": "json",
+    "interval": 10,
+    "tooltip": true,
+    "on-click": "setsid kitty --app-id sway-float-wide -e watch -n2 ollama ps &>/dev/null &"
+  },
+  "custom/virsh": {
+    "exec": "solverforge-waybar-virsh",
+    "return-type": "json",
+    "interval": 10,
+    "tooltip": true,
+    "on-click": "setsid kitty --app-id sway-float-wide -e solverforge-virsh-overview &>/dev/null &"
+  },
+  "custom/updates": {
+    "exec": "solverforge-waybar-updates",
+    "return-type": "json",
+    "interval": 3600,
+    "tooltip": true,
+    "on-click": "setsid kitty --app-id sway-float -e solverforge-pkg-install &>/dev/null &",
+    "signal": 8
+  },
+  "custom/power-profile": {
+    "exec": "solverforge-waybar-power-profile",
+    "return-type": "json",
+    "interval": 5,
+    "tooltip": true,
+    "on-click": "solverforge-menu power",
+    "on-click-right": "solverforge-menu system"
+  },
   "custom/power": {
     "format": "⏻",
     "tooltip": false,
     "on-click": "solverforge-menu system",
     "on-click-right": "solverforge-menu power"
+  },
+  "custom/notifications": {
+    "exec": "solverforge-waybar-notifications",
+    "return-type": "json",
+    "interval": 1,
+    "tooltip": true,
+    "on-click": "swaync-client -t",
+    "on-click-right": "swaync-client -C"
   }
 }
