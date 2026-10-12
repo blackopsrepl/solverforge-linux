@@ -400,6 +400,18 @@ QT_QPA_PLATFORMTHEME=kde
 - Custom modules: cava, podman, updates
 - Amiga-style corners, workspaces with icons
 
+## Backup Scripts (`solverforge-backup`, `solverforge-backup-prune`)
+
+- Loop over every path even when one fails: use `set -uo pipefail` (never `set -e`) with a collected `FAILED` flag, so one unreadable file cannot veto the remaining paths — restic exits nonzero per-path and anacron mails on any failure.
+- `mkdir -p` the lock dir before opening the lock file — /run is tmpfs and the dir vanishes on reboot, otherwise every post-reboot run fails on the lock open.
+- Pass `--retry-lock 5m` on every restic backup/forget invocation — transient lock contention waits instead of mailing a lock error.
+- Exclude ONLY volatile runtime state in `~/.config/restic-excludes` (container logrotate status churn, agent scratch dirs). Rootless container files change UID/GID across restarts and scratch dirs collect stray root-owned trees — excluding that volatile path is the fix.
+- Private keys are NEVER excluded — a backup that cannot restore keys restores nothing. When restic reports permission denied on a key, fix readability (owning group + `setfacl -m g:<group>:r--`, then `cat` the file as the backup user to prove it) instead of adding an exclude.
+- `chmod` on a file with an extended ACL moves the mask, not the group entry — re-check with `getfacl -p` after every chmod and use `setfacl` for the actual grant.
+- Prove key backups with a real cycle: `restic backup` the key dirs, `restic restore <snap> --target` under scratch, `diff` restored vs live for byte-identity, then `restic forget <probe-snaps> --prune` and confirm `list locks` is empty.
+- Keep the restic password file at mode 600 — it holds the repo key and must never be world-readable.
+- Before `restic unlock`, prove the lock is stale (`pgrep -f restic`, `ps -p <pid>`, `restic cat lock <id>`) — unlocking while a backup runs corrupts the prune.
+
 ## Decision Framework
 
 When the user requests system changes:
@@ -410,9 +422,20 @@ When the user requests system changes:
 4. **Is it a sway change?** → Edit the appropriate file in `default/sway/`
 5. **Is it a menu change?** → Edit `solverforge-menu` in `bin/`
 6. **Is it a new script?** → Create `solverforge-<name>` in `bin/`, make executable
-7. **Is it a package install?** → `sudo zypper install <package>` (NEVER pacman)
+7. **Is it a package install?** → `sudo zypper install <package>` (NEVER pacman); third-party Fedora-built RPMs follow [Third-party RPMs](#third-party-rpms-fedora-built) instead
 8. **Is it a font change?** → Update Fira Code references in kdeglobals.tpl, gtk templates, qt5ct, kitty
 9. **Does it need an env var?** → Add to `~/.config/environment.d/solverforge.conf`
+
+## Third-party RPMs (Fedora-built)
+
+Upstream projects often ship only Fedora-style RPMs. They run fine on openSUSE, but zypper rejects them for three predictable reasons — work through them in order:
+
+1. **Verify first.** `sha256sum -c` each RPM against the release's `SHA256SUMS.txt` before installing. Download with `curl -C -` so interrupted fetches resume, and `ls -la` the final sizes — a short file gets resumed again, not installed.
+2. **Inspect deps with `rpm -qpR`, then check the libraries, not the names.** Fedora RPMs require bare names (`libxkbcommon`) or virtuals (`vulkan-loader or libglvnd-egl`) that openSUSE packages under different names (`libxkbcommon0`, `libvulkan1`, `libglvnd`). Confirm the actual `.so` files exist under `/usr/lib64/` — when they do, the complaint is a distro-naming mismatch, not a missing library.
+3. **Install with `rpm`, not zypper.** zypper aborts on unsigned RPMs with no local-file override. Use `sudo rpm -Uvh --nodeps --replacefiles`: `--nodeps` only for the mismatches proven present in step 2, `--replacefiles` for `/usr/share/mime` and `/usr/share/mime/packages`, which Fedora RPMs bundle but openSUSE owns via the `filesystem` package (the dirs stay populated by other owners, so replacing is safe).
+4. **Install replacements before removing the old apps, then catch stragglers.** Smoke-test with `--version` and confirm `.desktop` entries in `/usr/share/applications/`. Dry-run the removal (`zypper -n rm --dry-run ...`) to prove no dependents, remove, then `rpm -qa | grep -i <name>` for leftover branding/l10n/helper packages and remove those too.
+
+- **Never `--nodeps` blind** — only after proving each required `.so` on disk; otherwise a genuinely missing library becomes a crash at first launch instead of an install-time error.
 
 ## Example Requests
 
