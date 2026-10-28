@@ -1,21 +1,28 @@
 #!/bin/bash
 
-# SolverForge — Focus an existing window matching a pattern, or launch a new one.
+# SolverForge — Focus an existing window of an application, or launch a new one.
+#
+# The application is identified by its Wayland app_id or X11 class, matched as
+# a whole name (case-insensitive regex, anchored). Window titles are never
+# consulted: a title is content — a terminal's working directory, an open
+# document — so `lumen` would match a kitty sitting in ~/src/lumen and focus
+# that instead of ever launching Lumen.
 
 if (($# == 0)); then
-  echo "Usage: solverforge-launch-or-focus <window-pattern> [launch-command]" >&2
+  echo "Usage: solverforge-launch-or-focus <app-id-pattern> [launch-command]" >&2
   exit 1
 fi
 
-WINDOW_PATTERN="$1"
+APP_PATTERN="^(${1})$"
 LAUNCH_COMMAND="${2:-$1}"
 
+# Only real windows carry a pid; outputs and workspaces are skipped so a
+# workspace named after the app cannot match either.
 CON_ID=$(swaymsg -t get_tree | jq -r \
-  --arg p "$WINDOW_PATTERN" \
-  '.. | select(.type?) | select(
+  --arg p "$APP_PATTERN" \
+  '.. | select(.type? == "con" or .type? == "floating_con") | select(.pid?) | select(
     (.app_id // "" | test($p; "i")) or
-    (.window_properties?.class // "" | test($p; "i")) or
-    (.name // "" | test($p; "i"))
+    (.window_properties?.class // "" | test($p; "i"))
   ) | .id' 2>/dev/null | head -n1)
 
 if [[ -n "$CON_ID" ]]; then
