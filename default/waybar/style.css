@@ -71,7 +71,6 @@ tooltip label {
 #custom-tokenmaxx,
 #custom-repobar,
 #custom-switchyard,
-#custom-cronbar,
 #custom-benchbar,
 #custom-backupbar,
 #custom-voxtype,
@@ -105,7 +104,6 @@ tooltip label {
 #custom-tokenmaxx:hover,
 #custom-repobar:hover,
 #custom-switchyard:hover,
-#custom-cronbar:hover,
 #custom-benchbar:hover,
 #custom-backupbar:hover,
 #custom-voxtype:hover,
@@ -411,13 +409,12 @@ tooltip label {
     box-shadow: 0 0 12px alpha(@crit, 0.20);
 }
 
-/* ─── Chip family: cronbar, benchbar, backupbar ──────────────────── */
-/* These three chips exist only on some machines, so their rules live in this
+/* ─── Chip family: benchbar, backupbar ───────────────────────────── */
+/* These chips exist only on some machines, so their rules live in this
    self-contained block. Same visual grammar as the rest of the family: bg-dark
    chip, teal rest state, warn for attention, crit for failure. Classes are the
    ones each tool actually emits. */
 
-#custom-cronbar,
 #custom-benchbar,
 #custom-backupbar {
     color: @teal-bright;
@@ -429,9 +426,6 @@ tooltip label {
     box-shadow: 0 0 10px alpha(@info, 0.10);
 }
 
-#custom-cronbar.has-commented,
-#custom-cronbar.has-sudo,
-#custom-cronbar.soon,
 #custom-benchbar.warning,
 #custom-benchbar.info,
 #custom-backupbar.warning,
@@ -441,7 +435,6 @@ tooltip label {
     box-shadow: 0 0 10px alpha(@warn, 0.14);
 }
 
-#custom-cronbar.has-errors,
 #custom-benchbar.critical,
 #custom-benchbar.source-error,
 #custom-benchbar.has-result-issues,
@@ -451,7 +444,6 @@ tooltip label {
     box-shadow: 0 0 12px alpha(@crit, 0.20);
 }
 
-#custom-cronbar.no-jobs,
 #custom-benchbar.stale,
 #custom-benchbar.idle,
 #custom-backupbar.stale,

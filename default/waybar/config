@@ -16,8 +16,7 @@
     "custom/tokenmaxx",
     "custom/repobar",
     "custom/benchbar",
-    "custom/backupbar",
-    "custom/cronbar"
+    "custom/backupbar"
   ],
   "modules-center": [
     "clock",
@@ -245,16 +244,6 @@
     "on-click": "solverforge-waybar-backupbar panel",
     "on-click-middle": "solverforge-waybar-backupbar refresh",
     "on-click-right": "solverforge-waybar-backupbar panel"
-  },
-  "custom/cronbar": {
-    "exec": "solverforge-waybar-cronbar",
-    "return-type": "json",
-    "interval": 60,
-    "signal": 14,
-    "tooltip": true,
-    "on-click": "solverforge-waybar-cronbar panel",
-    "on-click-middle": "solverforge-waybar-cronbar refresh",
-    "on-click-right": "solverforge-waybar-cronbar panel"
   },
   "custom/podman": {
     "exec": "solverforge-waybar-podman",
