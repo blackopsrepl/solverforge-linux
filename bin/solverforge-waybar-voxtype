@@ -10,8 +10,12 @@ if [[ "$voxtype_bin" == */* ]]; then
     exit 0
   fi
 elif ! command -v "$voxtype_bin" &>/dev/null; then
-  printf '{"text":"","class":"missing"}\n'
-  exit 0
+  if [[ "$voxtype_bin" == "voxtype" && -x "$HOME/.cargo/bin/voxtype" ]]; then
+    voxtype_bin="$HOME/.cargo/bin/voxtype"
+  else
+    printf '{"text":"","class":"missing"}\n'
+    exit 0
+  fi
 fi
 
 exec "$voxtype_bin" status --follow --format json

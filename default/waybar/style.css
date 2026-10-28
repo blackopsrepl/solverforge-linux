@@ -663,6 +663,7 @@ tooltip label {
 
 #custom-voxtype {
     color: @teal;
+    border-radius: 0;
 }
 
 #custom-voxtype.recording {
