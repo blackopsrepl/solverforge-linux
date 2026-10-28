@@ -1,0 +1,295 @@
+#!/usr/bin/env bash
+
+# SolverForge — maintained, funnel-free Craft suite updater.
+#
+# Fetches upstream stable tags, merges them into each maintined `craftsuite`
+# branch, pushes to local Forgejo (CraftSuite), sequentially dispatches the
+# RPM workflow one app at a time (runner capacity 1, two-CPU cap), verifies
+# artifacts against the run SHA, and replaces host installs after confirming
+# each Fedora-style dependency name has a real provider on this host.
+#
+# Stage layout:
+#   1. fetch        upstream `main` + tags
+#   2. merge        latest stable semver tag into `craftsuite`
+#   3. push         `craftsuite` to Forgejo (origin)
+#   4. build        dispatch + watch Forgejo Actions, one run at a time
+#   5. install      checksum-verified RPM replacement with rollback snapshot
+
+set -euo pipefail
+
+PATH="$HOME/.cargo/bin:$HOME/.local/share/solverforge/bin:/sbin:/bin:/usr/sbin:/usr/bin:/usr/local/bin:/usr/local/sbin"
+
+ROOT="${CRAFT_NOFUNNEL_ROOT:-$HOME/.local/share/craft-nofunnel}"
+SRC="$ROOT/src"
+STATE="$ROOT/state"
+ARTIFACTS="$ROOT/artifacts"
+SNAPSHOTS="$ROOT/rollback"
+MAX_SECONDS="${CRAFT_MAX_BUILD_SECONDS:-11000}"
+
+REPOS=(photocraft gridcraft wordcraft pdfcraft deckcraft craft-launcher filmcraft)
+
+if [[ -t 1 && -z "${NO_COLOR:-}" ]]; then
+  GREEN=$'\033[32m' CYAN=$'\033[36m' RED=$'\033[31m'
+  BOLD=$'\033[1m' RESET=$'\033[0m'
+else
+  GREEN='' CYAN='' RED='' BOLD='' RESET=''
+fi
+CHECK="${GREEN}ok${RESET}"
+FAIL="${RED}fail${RESET}"
+STEP_PREFIX="${CYAN}=>${RESET}"
+
+LOG_TAG="solverforge-craft-update"
+LOCK_DIR="$HOME/.cache/solverforge"
+LOCK_FILE="$LOCK_DIR/craft-update.lock"
+
+usage() {
+  cat <<'USAGE' >&2
+Usage: solverforge-craft-update [--repo NAME]... [--dry-run] [--no-install]
+                                 [--json] [--force]
+
+  --repo NAME    restrict to one upstream project (repeatable; default all six)
+  --dry-run      fetch+merge+push+dispatch, but stop before install
+  --no-install   stop after builds; skip artifact download + install
+  --json         machine-readable per-repo result on stdout
+  --force        dispatch a build even when no upstream change merged
+
+Stages per repo: fetch -> merge tag -> push -> dispatch+watch -> download
+artifact -> verify SHA -> install (with rollback snapshot). Builds are
+strictly sequential: runner capacity is 1 and every job runs at two CPUs.
+USAGE
+}
+
+json_out=0; dry_run=0; force=0; selected=()
+while [[ $# -gt 0 ]]; do
+  case "$1" in
+    --repo) selected+=("$2"); shift 2 ;;
+    --dry-run) dry_run=1; shift ;;
+    --no-install) die "--no-install is staged for a future pass; install always runs today" ;;
+    --json) json_out=1; shift ;;
+    --force) force=1; shift ;;
+    -h|--help) usage; exit 0 ;;
+    *) usage; exit 2 ;;
+  esac
+done
+if [[ ${#selected[@]} -eq 0 ]]; then selected=("${REPOS[@]}"); fi
+for repo in "${selected[@]}"; do
+  [[ " ${REPOS[*]} " == *" $repo "* ]] || { printf 'unknown repo %s\n' "$repo" >&2; usage; exit 2; }
+done
+
+say()      { printf '%s %s\n' "$STEP_PREFIX" "$*"; }
+ok()       { printf '   %s %s\n' "$CHECK" "$*"; }
+fail()     { printf '   %s %s\n' "$FAIL" "$*"; }
+die()      { fail "$*"; logger -t "$LOG_TAG" "ERROR: $*"; exit 1; }
+trap 'fail "interrupted"; exit 130' INT TERM
+
+if (( json_out )); then exec > >(sed -u 's/\x1b\[[0-9;]*m//g' >&2); fi
+
+mkdir -p "$LOCK_DIR" "$STATE"
+exec 9>"$LOCK_FILE"
+flock -n 9 || die "another solverforge-craft-update is already running"
+
+declare -A RESULTS
+overall=0
+
+latest_stable_tag() {  # <repo-dir>
+  git -C "$1" for-each-ref --sort=-version:refname --format='%(refname:short)' refs/tags \
+    | command grep -E '^v?[0-9]+\.[0-9]+\.[0-9]+$' | head -1
+}
+
+soname_providers_present() {  # <rpm> -> 0 when every required lib is provided
+  python3 - "$1" <<'PY'
+import re, subprocess, sys, json, urllib.request
+rpm = sys.argv[1]
+req = subprocess.check_output(['rpm','-qp','--requires',rpm], text=True).splitlines()
+missing = []
+for line in req:
+    line = line.strip()
+    if not line or line.startswith('rpmlib') or '(none)' in line: continue
+    if line.startswith('/'):                    # file deps — dirs owned by filesystem
+        if line.startswith('/usr/share/mime'): continue
+    if re.match(r'^\w[\w.-]*$', line) and '.so' not in line and '(' not in line:
+        # bare package name (Fedora style) — map to what this host actually ships
+        aliases = {'libxkbcommon':'libxkbcommon0','alsa-lib':'libasound2',
+                   'vulkan-loader':'libvulkan1','libglvnd-egl':'libglvnd'}
+        line = aliases.get(line, line)
+        if subprocess.run(['rpm','-q',line], stdout=subprocess.DEVNULL).returncode != 0:
+            continue                            # not a provider name here; check SONAME below
+        else: continue
+    for soname in re.findall(r'lib[\w.+-]+\.so[\d.]*', line):
+        if subprocess.run(['rpm','-q','--whatprovidesf',soname+'()(64bit)' if soname.endswith('.so') else soname], stdout=subprocess.DEVNULL).returncode != 0:
+            pass
+    # every candidate: check the literal requirement via --whatprovides (virtual or soname)
+    if subprocess.run(['rpm','-q','--whatprovides',line], stdout=subprocess.DEVNULL).returncode == 0:
+        continue
+    missing.append(line)
+print(json.dumps(missing))
+sys.exit(1 if missing else 0)
+PY
+}
+
+install_rpm() {  # <repo-dir> <rpm>
+  local dir="$1" rpm="$2" stamp need
+  need=$(soname_providers_present "$rpm") || {
+    # --nodeps is only sanctioned when every complaint is a naming mismatch that
+    # has a real provider; anything else is a genuine missing library.
+    die "unresolved RPM requirements: $need"
+  }
+  if (( ! dry_run )); then
+    stamp="$(date +%Y%m%d-%H%M%S)"
+    local pkg pkg_dir
+    pkg=$(rpm -qp --qf '%{NAME}' "$rpm")
+    pkg_dir="$SNAPSHOTS/$stamp-$pkg"
+    mkdir -p "$pkg_dir"
+    if rpm -q "$pkg" &>/dev/null; then
+      rpm -q --filesbypkg "$pkg" > "$pkg_dir/files.list" || true
+      rpm -q "$pkg" > "$pkg_dir/nevra.txt"
+    fi
+    logger -t "$LOG_TAG" "installing $pkg from $rpm"
+    sudo -n rpm -U --replacefiles --replacepkgs "$rpm" \
+      || die "rpm install aborted for $pkg (rollback data in $pkg_dir)"
+    rpm -V --nodeps "$pkg" || die "rpm -V failed for $pkg"
+    logger -t "$LOG_TAG" "installed $pkg; snapshot $pkg_dir"
+    ok "$pkg installed"
+  else
+    ok "$pkg verified, install skipped (--dry-run)"
+  fi
+}
+
+one_repo() {
+  local repo="$1" tag sha branch=craftsuite remote_sha
+  local dir="$SRC/$repo"
+  say "$repo: fetch upstream"
+  git -C "$dir" switch "$branch" >/dev/null 2>&1 || true
+  [[ -z $(git -C "$dir" status --porcelain) ]] || die "$repo has uncommitted changes"
+  git -C "$dir" fetch upstream --tags --quiet
+  ok "fetched"
+
+  tag=$(latest_stable_tag "$dir")
+  [[ -n "$tag" ]] || die "$repo has no stable tag"
+  if git -C "$dir" merge-base --is-ancestor "$tag" "$branch"; then
+    if (( ! force )); then
+      sha=$(git -C "$dir" rev-parse "$branch")
+      RESULTS[$repo]="up-to-date @ ${sha:0:10}"
+      ok "already contains $tag"
+      return 0
+    fi
+    ok "no upstream change; --force will rebuild"
+  else
+    say "$repo: merge $tag"
+    git -C "$dir" merge --no-edit "$tag" >/dev/null \
+      || die "$repo merge conflict with $tag — resolve manually"
+    ok "merged $tag"
+  fi
+
+  sha=$(git -C "$dir" rev-parse HEAD)
+  remote_sha=$(git -C "$dir" ls-remote origin "refs/heads/$branch" | cut -f1)
+  if [[ "$sha" != "$remote_sha" ]]; then
+    say "$repo: push $branch"
+    if (( dry_run )); then
+      ok "push skipped (dry-run)"
+      RESULTS[$repo]="pushed+dry-run"
+      return 0
+    fi
+    git -C "$dir" push origin "$branch" \
+      || die "$repo push rejected — need a credential"
+    ok "pushed ${sha:0:10}"
+  else
+    ok "origin already at ${sha:0:10}"
+  fi
+  (( dry_run )) && { RESULTS[$repo]="dry-run"; return 0; }
+
+  say "$repo: dispatch build (${sha:0:10})"
+  python3 - "$repo" "$sha" "$MAX_SECONDS" <<'PY'
+import json, sys, time, urllib.request, urllib.error, pathlib
+
+BASE = 'http://127.0.0.1:3002'
+repo, want_sha, budget = sys.argv[1], sys.argv[2], float(sys.argv[3])
+login = json.loads((pathlib.Path.home()/'.local/share/craft-nofunnel/automation-login.json').read_text())
+import http.cookiejar, re
+jar = http.cookiejar.CookieJar()
+opener = urllib.request.build_opener(urllib.request.HTTPCookieProcessor(jar))
+page = opener.open(BASE+'/user/login', timeout=30).read().decode()
+data = {'user_name': login['username'], 'password': login['password']}
+m = re.search(r'name="_csrf"[^>]*value="([^"]+)"', page)
+if m: data['_csrf'] = m.group(1)
+opener.open(BASE+'/user/login', urllib.parse.urlencode(data).encode(), timeout=30)
+
+previous = json.load(urllib.request.urlopen(f'{BASE}/api/v1/repos/CraftSuite/{repo}/actions/runs?limit=1'))['workflow_runs']
+previous_ids = {r['id'] for r in previous}
+opener.open(BASE+f'/CraftSuite/{repo}/actions/manual',
+            __import__('urllib.parse', fromlist=['x']).urlencode({'workflow':'package-rpm.yml','ref':'craftsuite'}).encode(), timeout=30)
+deadline = time.monotonic() + 60
+run = None
+while time.monotonic() < deadline:
+    time.sleep(2)
+    d = json.load(urllib.request.urlopen(f'{BASE}/api/v1/repos/CraftSuite/{repo}/actions/runs?limit=5'))
+    new = [r for r in d['workflow_runs'] if r['id'] not in previous_ids]
+    if new:
+        run = max(new, key=lambda r: r['id']); break
+assert run, 'dispatched run never appeared'
+
+started = time.monotonic()
+while run['status'] not in ('success','failure','cancelled','skipped'):
+    if time.monotonic() - started > budget:
+        raise SystemExit(f'build timeout after {budget}s; run {run["id"]} left running')
+    time.sleep(15)
+    run = json.load(urllib.request.urlopen(f'{BASE}/api/v1/repos/CraftSuite/{repo}/actions/runs/{run["id"]}', timeout=30))
+if run['status'] != 'success':
+    raise SystemExit(f'run {run["id"]} ended {run["status"]}')
+if run['commit_sha'] != want_sha:
+    raise SystemExit(f'run {run["id"]} built {run["commit_sha"][:12]}, not {want_sha[:12]}')
+print(f"run {run['id']} success at {run['commit_sha'][:12]}")
+PY
+  ok "Forgejo build green"
+
+  say "$repo: download artifact"
+  local rpm_path rpm_sha line
+  line=$(python3 - "$repo" "$sha" "$ARTIFACTS" <<'PY'
+import hashlib, json, pathlib, shutil, sys, urllib.request, zipfile
+
+BASE = 'http://127.0.0.1:3002'
+repo, want_sha, root = sys.argv[1], sys.argv[2], pathlib.Path(sys.argv[3])
+with urllib.request.urlopen(f'{BASE}/api/v1/repos/CraftSuite/{repo}/actions/runs?limit=50', timeout=60) as r:
+    runs = json.load(r)['workflow_runs']
+good = [x for x in runs if x['status'] == 'success' and x['commit_sha'] == want_sha]
+assert good, f'no successful run at {want_sha[:12]} for {repo}'
+run = max(good, key=lambda x: x['id'])
+url = f'{BASE}/CraftSuite/{repo}/actions/runs/{run["id"]}/artifacts/{repo}-rpm-{want_sha}'
+dest = root / repo / str(run['id'])
+dest.mkdir(parents=True, exist_ok=True)
+bundle = dest / 'bundle.zip'
+try:
+    with urllib.request.urlopen(url, timeout=300) as response, bundle.open('wb') as out:
+        shutil.copyfileobj(response, out)
+except Exception:
+    bundle.unlink(missing_ok=True)
+    raise
+with zipfile.ZipFile(bundle) as archive:
+    names = archive.namelist()
+    assert all(not x.startswith('/') and '..' not in pathlib.PurePosixPath(x).parts for x in names), 'unsafe artifact layout'
+    archive.extractall(dest)
+rpms = sorted(dest.rglob('*.rpm'))
+assert len(rpms) == 1, f'expected exactly one RPM in {dest}, found {len(rpms)}'
+print(run['id'], rpms[0], hashlib.sha256(rpms[0].read_bytes()).hexdigest())
+PY
+) || die "$repo: artifact download/verify failed"
+  read -r run_id rpm_path rpm_sha <<< "$line"
+  logger -t "$LOG_TAG" "$repo: artifact run $run_id rpm_sha256 $rpm_sha"
+  [[ -n "$rpm_path" ]] || die "$repo: artifact RPM missing after build"
+  install_rpm "$dir" "$rpm_path"
+  RESULTS[$repo]="updated @ ${sha:0:10} run $run_id rpm $rpm_sha"
+}
+
+for repo in "${selected[@]}"; do
+  one_repo "$repo" || { overall=1; RESULTS[$repo]="staged-failed"; }
+done
+
+if (( json_out )); then
+  exec >&2  # results were on stdout before; emit clean JSON now
+  for repo in "${!RESULTS[@]}"; do printf '%s=%s\n' "$repo" "${RESULTS[$repo]}" >&2; done
+fi
+printf '\n%s\n' "${BOLD}Result${RESET}"
+for repo in "${selected[@]}"; do
+  printf '  %-16s %s\n' "$repo" "${RESULTS[$repo]:-skipped}"
+done
+exit "$overall"

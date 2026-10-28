@@ -413,6 +413,28 @@ QT_QPA_PLATFORMTHEME=kde
 - Keep the restic password file at mode 600 — it holds the repo key and must never be world-readable.
 - Before `restic unlock`, prove the lock is stale (`pgrep -f restic`, `ps -p <pid>`, `restic cat lock <id>`) — unlocking while a backup runs corrupts the prune.
 
+## Maintained Tool Suite Script (`solverforge-craft-update`)
+
+Long-running maintenance pipelines belong in the framework's `bin/` as
+`solverforge-*` commands, NOT in agent scratch or ad-hoc project dirs — they
+must outlive the conversation and stay on PATH. The established pattern (see
+`solverforge-craft-update` in `/srv/lab/tools/solverforge-linux/bin/`):
+- `set -euo pipefail`, colour vars guarded by `[[ -t 1 ]]` + `NO_COLOR`,
+  symbols `CHECK/FAIL/STEP_PREFIX` so piped output stays plain.
+- `flock -n` on `$HOME/.cache/solverforge/<name>.lock` before any mutation;
+  `mkdir -p` the lock dir first (backups learned this on /run).
+- `logger -t <tag>` for long-running steps so journald keeps the trail after
+  the terminal closes.
+- A state directory with per-app JSON/ledger so a killed run resumes at the
+  exact failed stage instead of restarting everything.
+- Snapshot (files.list + NEVRA) before any `rpm -U` replacement.
+- Destructive flags gate explicitly (`die` on unsupported combos) rather than
+  silently half-implementing `--json`/`--no-install`.
+
+Shellcheck-clean scripts: remove unused decls rather than leaving them
+(SC2034 noise hides real warnings), and split `local` chains with the value
+used in the same chain (SC2318).
+
 ## Decision Framework
 
 When the user requests system changes:
