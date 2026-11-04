@@ -26,7 +26,7 @@ ARTIFACTS="$ROOT/artifacts"
 SNAPSHOTS="$ROOT/rollback"
 MAX_SECONDS="${CRAFT_MAX_BUILD_SECONDS:-11000}"
 
-REPOS=(photocraft gridcraft wordcraft pdfcraft deckcraft craft-launcher filmcraft)
+REPOS=(photocraft gridcraft wordcraft pdfcraft deckcraft craft-launcher filmcraft vectorcraft soundcraft figcraft lightcraft cadcraft effectcraft designcraft)
 
 if [[ -t 1 && -z "${NO_COLOR:-}" ]]; then
   GREEN=$'\033[32m' CYAN=$'\033[36m' RED=$'\033[31m'
