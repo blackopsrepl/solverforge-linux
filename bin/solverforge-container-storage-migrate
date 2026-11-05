@@ -17,16 +17,21 @@ for source in /var/lib/containers/storage "$home/.local/share/containers/storage
   fi
   [[ ! -e "$source.nvme-before-usb" ]]
 done
-# A running build is not a disposable leftover. Stop migration rather than interrupt it.
-for daemon in dind-ruby dind-python dind-cpp dind-rust; do
-  [[ -z $(podman exec "$daemon" docker ps -q) ]] || { echo "Active CI container in $daemon; migration not started." >&2; exit 1; }
-done
 state=/var/lib/solverforge/container-storage-migration
-mkdir -p "$state"
-podman ps --format '{{.Names}}' > "$state/system-running.txt"
-u podman ps --format '{{.Names}}' > "$state/user-running.txt"
-podman volume ls -q | sort > "$state/system-volumes.txt"
-u podman volume ls -q | sort > "$state/user-volumes.txt"
+if [[ ${2:-} == --resume-offline ]]; then
+  [[ -s "$state/system-running.txt" && -s "$state/user-running.txt" ]]
+  [[ -z $(podman ps -q) && -z $(u podman ps -q) ]] || { echo 'Resume requires both stores offline.' >&2; exit 1; }
+else
+  # A running build is not a disposable leftover. Stop migration rather than interrupt it.
+  for daemon in dind-ruby dind-python dind-cpp dind-rust; do
+    [[ -z $(podman exec "$daemon" docker ps -q) ]] || { echo "Active CI container in $daemon; migration not started." >&2; exit 1; }
+  done
+  mkdir -p "$state"
+  podman ps --format '{{.Names}}' > "$state/system-running.txt"
+  u podman ps --format '{{.Names}}' > "$state/user-running.txt"
+  podman volume ls -q | sort > "$state/system-volumes.txt"
+  u podman volume ls -q | sort > "$state/user-volumes.txt"
+fi
 printf 'Stopping container services for consistent final copy. Hermes and desktop remain running.\n'
 u systemctl --user stop podman.socket podman.service heimdall.service local-hoppscotch-pgadmin.service
 systemctl stop forgejo-runners.service search-firecrawl.service search-searxng.service sfm-dovecot.service forgejo.service podman.socket podman.service
