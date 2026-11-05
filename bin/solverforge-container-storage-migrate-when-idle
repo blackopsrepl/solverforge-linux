@@ -1,0 +1,23 @@
+#!/usr/bin/env bash
+# Wait for current CI work without stopping it, then perform one storage cutover.
+set -euo pipefail
+[[ $EUID -eq 0 ]] || { echo 'Run with sudo.' >&2; exit 1; }
+root=$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")/.." && pwd)
+user="${1:-${SUDO_USER:-pvd}}"
+for ((attempt=0; attempt<240; attempt++)); do
+  busy=0
+  for daemon in dind-ruby dind-python dind-cpp dind-rust; do
+    if ! containers=$(podman exec "$daemon" docker ps -q); then exit 1; fi
+    if [[ -n "$containers" ]]; then busy=1; fi
+  done
+  if (( busy )); then
+    printf '%s Waiting for active CI job containers.\n' "$(date --iso-8601=seconds)"
+    sleep 60
+    continue
+  fi
+  # Migration rechecks activity before its first mutation and never retries a partial cutover.
+  "$root/bin/solverforge-container-storage-migrate" "$user"
+  exit 0
+done
+printf 'CI remained busy for four hours; no migration was performed.\n' >&2
+exit 1
