@@ -1,0 +1,246 @@
+#!/usr/bin/python3
+"""Conservative local Podman/DinD retention and existing file-log rotation."""
+import argparse
+import fcntl
+import json
+import os
+from pathlib import Path
+import shlex
+import sqlite3
+import subprocess
+import sys
+import time
+
+
+DAY = 86400
+STORAGE_POLICY = None
+
+
+def run(*args):
+    if args and args[0] == 'podman' and STORAGE_POLICY is not None:
+        ready, reason = storage_ready(STORAGE_POLICY)
+        if not ready:
+            raise RuntimeError(f'Storage disappeared before Podman operation: {reason}')
+    return subprocess.run(args, check=True, text=True, stdout=subprocess.PIPE,
+                          stderr=subprocess.PIPE, timeout=600).stdout
+
+
+def load_json(*args):
+    return json.loads(run(*args))
+
+
+def emit(message):
+    print(message, flush=True)
+
+
+def mutate(args, apply):
+    emit(('APPLY ' if apply else 'DRY-RUN ') + shlex.join(args))
+    if apply:
+        emit(run(*args).strip())
+
+
+def build_processes():
+    """Inspect argv, not shell command text (which can contain our own probes)."""
+    found = []
+    for proc in Path('/proc').glob('[0-9]*'):
+        try:
+            argv = (proc / 'cmdline').read_bytes().decode().strip('\0').split('\0')
+        except FileNotFoundError:
+            continue
+        except PermissionError as exc:
+            raise RuntimeError('Cannot prove process idleness: /proc is restricted') from exc
+        executable = Path(argv[0]).name if argv and argv[0] else ''
+        if (executable in {'buildah', 'buildctl', 'buildkitd'} or
+                executable in {'podman', 'docker'} and
+                any(a in {'build', 'buildx', 'commit', 'pull', 'load', 'import'} for a in argv[1:])):
+            found.append((proc.name, executable))
+    return found
+
+
+def runner_idle(db_path, runner_name=None, now=None):
+    """Fail closed; require a live registered runner and 15 minutes of quiet."""
+    now = time.time() if now is None else now
+    if not db_path:
+        return False, 'Forgejo DB not configured'
+    with sqlite3.connect(Path(db_path).resolve().as_uri() + '?mode=ro', uri=True,
+                         timeout=5) as db:
+        names = [runner_name] if runner_name else ['ruby-runner', 'python-runner', 'cpp-runner', 'rust-runner']
+        for name in names:
+            rows = db.execute('SELECT id,last_online FROM action_runner WHERE name=? AND COALESCE(deleted,0)=0', (name,)).fetchall()
+            live = [rid for rid, online in rows if online >= now - 180]
+            if not live:
+                return False, f'{name}: no recently online registered runner'
+            ids = [rid for rid, _ in rows]
+            placeholders = ','.join('?' for _ in ids)
+            tasks = db.execute(f'SELECT id,started,stopped,updated FROM action_task WHERE runner_id IN ({placeholders})', ids)
+            for task, started, stopped, updated in tasks:
+                if not stopped or max(started or 0, stopped or 0, updated or 0) > now - 900:
+                    return False, f'{name}: task {task} active/recent'
+    return True, 'runner quiet for >=15m'
+
+
+def dind_idle(name, config):
+    idle, reason = runner_idle(config.get('forgejo_db'), name.removeprefix('dind-') + '-runner')
+    if not idle:
+        return False, reason
+    if run('podman', 'exec', name, 'docker', 'ps', '-q').strip():
+        return False, 'running Docker containers'
+    top = run('podman', 'top', name, 'comm').splitlines()[1:]
+    allowed = {'dockerd', 'containerd', 'docker-init', 'dind-entrypoint', 'sh'}
+    if any(line.strip() not in allowed for line in top):
+        return False, 'non-daemon processes inside DinD'
+    runner_top = run('podman', 'top', name.replace('dind-', 'runner-', 1), 'comm').splitlines()[1:]
+    if not runner_top or any(line.strip() != 'forgejo-runner' for line in runner_top):
+        return False, 'runner has child processes or is absent'
+    return True, reason
+
+
+def gc(config, apply):
+    busy = build_processes()
+    if busy:
+        emit(f'SKIP GC: build/image operations active: {busy}')
+        return
+    root = os.geteuid() == 0
+    if root:
+        idle, reason = runner_idle(config.get('forgejo_db'))
+    else:
+        # Host-wide process inspection above covers local rootless build clients.
+        idle, reason = True, 'no local build/image operation processes'
+    if idle:
+        # -f here only suppresses the prune confirmation. Never --external or -a.
+        mutate(['podman', 'image', 'prune', '-f', '--filter', 'until=168h'], apply)
+    else:
+        emit(f'SKIP Podman image GC: {reason}')
+    # The installed Podman 5.4.2 lacks rm --storage. Do not replace it with
+    # buildah rm, filesystem deletion, system prune, or container prune.
+    emit('KEEP all storage/build containers: no automatic rm --storage policy')
+    if not root:
+        return
+    containers = {n for c in load_json('podman', 'ps', '--format', 'json') for n in c['Names']}
+    for name in config.get('dind', []):
+        if name not in containers:
+            emit(f'SKIP {name}: not running')
+            continue
+        idle, reason = dind_idle(name, config)
+        if not idle:
+            emit(f'SKIP {name}: {reason}')
+            continue
+        for tail in [
+            ['builder', 'prune', '-f', '--filter', 'until=168h'],
+            # No --all: preserve every tagged runner base, regardless of age.
+            ['image', 'prune', '-f', '--filter', 'until=720h'],
+        ]:
+            # Recheck just before each native operation. Docker preserves in-use
+            # cache/images if a job arrives after this observational guard.
+            idle, reason = dind_idle(name, config)
+            if not idle or build_processes():
+                emit(f'SKIP {name}: activity changed ({reason})')
+                break
+            mutate(['podman', 'exec', name, 'docker', *tail], apply)
+
+
+def rotation_config(paths):
+    if not paths:
+        return '# No eligible existing Podman file logs.\n'
+    quoted = []
+    for path in sorted(set(paths)):
+        if any(c in path for c in '\n\r"\\{}'):
+            raise ValueError('Unsafe logrotate path')
+        quoted.append(f'"{path}"')
+    return '\n'.join(quoted) + ''' {
+    size 50M
+    rotate 3
+    maxage 14
+    missingok
+    notifempty
+    compress
+    delaycompress
+    copytruncate
+}
+'''
+
+
+def logs(state, apply):
+    info = load_json('podman', 'info', '--format', 'json')
+    graphroot = Path(info['store']['graphRoot']).resolve()
+    ids = run('podman', 'ps', '-aq').split()
+    paths = []
+    for cid in ids:
+        c = load_json('podman', 'inspect', cid)[0]
+        log = c['HostConfig']['LogConfig']
+        if log['Type'] not in {'json-file', 'k8s-file'}:
+            continue
+        path = Path(log['Path'])
+        if not path.is_absolute() or path.is_symlink() or not path.resolve().is_relative_to(graphroot):
+            raise RuntimeError(f'Refusing log outside graphroot or symlink: {path}')
+        if path.exists() and not path.is_file():
+            raise RuntimeError(f'Not a regular log: {path}')
+        paths.append(str(path))
+        emit(f'FILE-LOG {c["Name"]} {path} bytes={path.stat().st_size if path.exists() else 0}')
+    target = state / 'container-logs.conf'
+    target.write_text(rotation_config(paths))
+    emit(f'logrotate config: {target}; {len(paths)} logs; 50MiB x (current + 3 rotations)')
+    if paths:
+        args = ['/usr/sbin/logrotate', '--state', str(state / 'logrotate.status'), str(target)]
+        if not apply:
+            args.insert(1, '--debug')
+        result = subprocess.run(args, text=True, capture_output=True, timeout=600, check=True)
+        emit(result.stdout + result.stderr)
+
+
+def storage_ready(config):
+    """Check the canonical bind mount and filesystem UUID before ANY Podman call."""
+    expected = config.get('storage_uuid')
+    graphroot = (config.get('rootful_graphroot', '/var/lib/containers/storage')
+                 if os.geteuid() == 0 else
+                 config.get('rootless_graphroot', str(Path.home() / '.local/share/containers/storage')))
+    if not expected:
+        return False, 'storage_uuid not configured'
+    result = subprocess.run(['findmnt', '--mountpoint', graphroot, '--noheadings',
+                             '--output', 'UUID'], text=True, capture_output=True, check=False)
+    if result.returncode or result.stdout.strip() != expected:
+        return False, f'{graphroot}: required SSD mount UUID {expected} absent/mismatched'
+    return True, graphroot
+
+
+def main():
+    parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument('action', choices=['gc', 'logs'])
+    parser.add_argument('--apply', action='store_true', help='mutate; default is inspection only')
+    default_config = Path('/etc/solverforge/container-maintenance.json')
+    if os.geteuid() != 0:
+        user_config = Path(os.environ.get('XDG_CONFIG_HOME', str(Path.home() / '.config'))) / 'solverforge/container-maintenance.json'
+        if user_config.exists():
+            default_config = user_config
+    parser.add_argument('--config', type=Path, default=default_config)
+    args = parser.parse_args()
+    config = json.loads(args.config.read_text()) if args.config.exists() else {}
+    global STORAGE_POLICY
+    STORAGE_POLICY = config
+    ready, reason = storage_ready(config)
+    if not ready:
+        emit(f'SKIP: {reason}; Podman was not invoked')
+        return
+    state = (Path('/var/lib/solverforge/container-maintenance') if os.geteuid() == 0 else
+             Path(os.environ.get('XDG_STATE_HOME', str(Path.home() / '.local/state'))) / 'solverforge/container-maintenance')
+    state.mkdir(parents=True, exist_ok=True, mode=0o700)
+    with (state / 'maintenance.lock').open('w') as lock:
+        try:
+            fcntl.flock(lock, fcntl.LOCK_EX | fcntl.LOCK_NB)
+        except BlockingIOError:
+            emit('SKIP: maintenance already running')
+            return
+        if args.action == 'gc':
+            gc(config, args.apply)
+        else:
+            logs(state, args.apply)
+
+
+if __name__ == '__main__':
+    try:
+        main()
+    except (OSError, ValueError, KeyError, RuntimeError, sqlite3.Error, subprocess.SubprocessError) as error:
+        print(f'container maintenance failed closed: {error}', file=sys.stderr)
+        if isinstance(error, subprocess.CalledProcessError):
+            print(error.stderr, file=sys.stderr)
+        sys.exit(1)

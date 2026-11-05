@@ -1,0 +1,82 @@
+#!/usr/bin/env bash
+# Install only this feature; never restart containers or journald.
+set -euo pipefail
+ROOT="${SOLVERFORGE_PATH:-$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")/.." && pwd)}"
+scope=""; enable=true; uuid=""; db=""
+while (($#)); do
+    case "$1" in
+        --system) scope=system; shift ;;
+        --user) scope=user; shift ;;
+        --no-enable) enable=false; shift ;;
+        --storage-uuid) uuid="${2:?UUID required}"; shift 2 ;;
+        --forgejo-db) db="${2:?DB path required}"; shift 2 ;;
+        *) printf 'Usage: %s --system|--user [--no-enable] [--storage-uuid UUID] [--forgejo-db PATH]\n' "$0" >&2; exit 2 ;;
+    esac
+done
+[[ -n "$scope" ]] || { printf 'Choose --system or --user\n' >&2; exit 2; }
+command -v python3 >/dev/null
+command -v logrotate >/dev/null
+if [[ "$scope" == system ]]; then
+    [[ "$EUID" == 0 ]] || { printf 'Run --system with sudo\n' >&2; exit 1; }
+    exe=/usr/local/libexec/solverforge-container-maintenance
+    units=/etc/systemd/system
+    config=/etc/solverforge/container-maintenance.json
+    containers=/etc/containers/containers.conf.d
+    ctl=(systemctl)
+    install -Dm644 "$ROOT/default/journald/90-solverforge-retention.conf" /etc/systemd/journald.conf.d/90-solverforge-retention.conf
+    install -Dm644 "$ROOT/default/systemd/container-maintenance/journal-retention.conf" "$units/solverforge-container-logs.service.d/journal-retention.conf"
+else
+    [[ "$EUID" != 0 ]] || { printf 'Run --user as the target user\n' >&2; exit 1; }
+    exe="$HOME/.local/libexec/solverforge-container-maintenance"
+    units="${XDG_CONFIG_HOME:-$HOME/.config}/systemd/user"
+    config="${XDG_CONFIG_HOME:-$HOME/.config}/solverforge/container-maintenance.json"
+    containers="${XDG_CONFIG_HOME:-$HOME/.config}/containers/containers.conf.d"
+    ctl=(systemctl --user)
+fi
+install -Dm755 "$ROOT/bin/solverforge-container-maintenance" "$exe"
+install -Dm644 "$ROOT/default/containers/90-solverforge-log-limits.conf" "$containers/90-solverforge-log-limits.conf"
+python3 - "$ROOT" "$units" "$exe" "$config" "$uuid" "$db" <<'PY'
+import json
+from pathlib import Path
+import re
+import sys
+root, units, exe, config, uuid, db = sys.argv[1:]
+if uuid and not re.fullmatch(r'[0-9a-fA-F-]{36}', uuid):
+    raise SystemExit('Invalid filesystem UUID')
+# systemd ExecStart quoting: reject directive/specifier expansion in paths.
+if any(c in exe + config for c in '\n\r%$"\\'):
+    raise SystemExit('Unsupported path characters')
+units = Path(units)
+units.mkdir(parents=True, exist_ok=True)
+for source in (Path(root) / 'default/systemd/container-maintenance').iterdir():
+    if source.suffix in {'.service', '.timer'}:
+        command = f'"{exe}"'
+        text = source.read_text().replace('@EXEC@', command)
+        # argparse options may precede the positional action.
+        text = text.replace(command + ' ', command + f' --config "{config}" ')
+        (units / source.name).write_text(text)
+config = Path(config)
+if config.exists():
+    settings = json.loads(config.read_text())
+elif config.as_posix().startswith('/etc/'):
+    settings = json.loads((Path(root) / 'default/containers/maintenance.json').read_text())
+elif Path('/etc/solverforge/container-maintenance.json').exists():
+    settings = json.loads(Path('/etc/solverforge/container-maintenance.json').read_text())
+else:
+    settings = json.loads((Path(root) / 'default/containers/maintenance.json').read_text())
+if uuid:
+    settings['storage_uuid'] = uuid
+if db:
+    settings['forgejo_db'] = db
+config.parent.mkdir(parents=True, exist_ok=True)
+config.write_text(json.dumps(settings, indent=2) + '\n')
+config.chmod(0o644)
+PY
+"${ctl[@]}" daemon-reload
+if "$enable"; then
+    "${ctl[@]}" enable --now solverforge-container-gc.timer solverforge-container-logs.timer
+else
+    printf 'Installed without enabling timers (existing timer state unchanged).\n'
+fi
+printf 'Installed %s maintenance: %s; config: %s\n' "$scope" "$exe" "$config"
+printf 'No container or service restarted. Journald defaults apply on its next natural start; system log timer also rotates/vacuums live journals.\n'

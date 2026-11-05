@@ -1,0 +1,9 @@
+[Unit]
+Description=Rotate existing Podman file logs without restarting containers
+
+[Service]
+Type=oneshot
+ExecStart=@EXEC@ logs --apply
+Nice=19
+IOSchedulingClass=idle
+TimeoutStartSec=30min

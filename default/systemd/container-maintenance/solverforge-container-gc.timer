@@ -1,0 +1,10 @@
+[Unit]
+Description=Daily conservative container garbage collection
+
+[Timer]
+OnCalendar=*-*-* 04:30:00
+RandomizedDelaySec=45min
+Persistent=true
+
+[Install]
+WantedBy=timers.target

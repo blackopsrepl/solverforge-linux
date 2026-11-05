@@ -1,0 +1,13 @@
+#!/usr/bin/env bash
+# Reconnect INTERZONE container storage and resume the host's configured container services.
+set -euo pipefail
+[[ $EUID -eq 0 ]] || { echo 'Run with sudo.' >&2; exit 1; }
+user="${1:-${SUDO_USER:-pvd}}"
+uid=$(id -u "$user")
+systemctl start mnt-INTERZONE.mount srv-lab.mount
+systemctl start var-lib-containers-storage.mount "$(systemd-escape --path --suffix=mount "/home/$user/.local/share/containers/storage")"
+/usr/local/libexec/solverforge-container-storage-check system
+runuser -u "$user" -- /usr/local/libexec/solverforge-container-storage-check user
+systemctl start forgejo.service sfm-dovecot.service search-searxng.service search-firecrawl.service forgejo-runners.service
+runuser -u "$user" -- env XDG_RUNTIME_DIR="/run/user/$uid" DBUS_SESSION_BUS_ADDRESS="unix:path=/run/user/$uid/bus" systemctl --user start heimdall.service local-hoppscotch-pgadmin.service
+printf 'SSD storage mounted; configured container services started.\n'

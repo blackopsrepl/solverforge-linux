@@ -1,0 +1,66 @@
+#!/usr/bin/env bash
+# Offline final sync and cutover. Keep originals until the operator verifies all services.
+set -euo pipefail
+[[ $EUID -eq 0 ]] || { echo 'Run with sudo.' >&2; exit 1; }
+user="${1:-${SUDO_USER:-pvd}}"
+home=$(getent passwd "$user" | cut -d: -f6)
+uid=$(id -u "$user")
+root=$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")/.." && pwd)
+u() { runuser -u "$user" -- env HOME="$home" XDG_RUNTIME_DIR="/run/user/$uid" DBUS_SESSION_BUS_ADDRESS="unix:path=/run/user/$uid/bus" "$@"; }
+exec 9>/run/solverforge-container-storage-migrate.lock
+flock -n 9
+[[ $(findmnt -rn -T /srv/lab -o UUID) == 5eefa1ea-548d-4a96-bef5-e0c2f78e964b ]]
+for source in /var/lib/containers/storage "$home/.local/share/containers/storage"; do
+  if mountpoint -q "$source"; then
+    echo "Already mounted: $source" >&2
+    exit 1
+  fi
+  [[ ! -e "$source.nvme-before-usb" ]]
+done
+# A running build is not a disposable leftover. Stop migration rather than interrupt it.
+for daemon in dind-ruby dind-python dind-cpp dind-rust; do
+  [[ -z $(podman exec "$daemon" docker ps -q) ]] || { echo "Active CI container in $daemon; migration not started." >&2; exit 1; }
+done
+state=/var/lib/solverforge/container-storage-migration
+mkdir -p "$state"
+podman ps --format '{{.Names}}' > "$state/system-running.txt"
+u podman ps --format '{{.Names}}' > "$state/user-running.txt"
+podman volume ls -q | sort > "$state/system-volumes.txt"
+u podman volume ls -q | sort > "$state/user-volumes.txt"
+printf 'Stopping container services for consistent final copy. Hermes and desktop remain running.\n'
+u systemctl --user stop podman.socket podman.service heimdall.service local-hoppscotch-pgadmin.service
+systemctl stop forgejo-runners.service search-firecrawl.service search-searxng.service sfm-dovecot.service forgejo.service podman.socket podman.service
+u podman stop --time 30 --all
+podman stop --time 30 --all
+podman unmount --all
+u podman unshare podman unmount --all
+for spec in "system:/var/lib/containers/storage" "user-$user:$home/.local/share/containers/storage"; do
+  name=${spec%%:*}; source=${spec#*:}; destination="/srv/lab/containers/$name"
+  mkdir -p "$destination"
+  rsync -aHAXx --numeric-ids --delete "$source/" "$destination/"
+  changes=$(rsync -aHAXxnc --numeric-ids --delete --itemize-changes "$source/" "$destination/")
+  [[ -z "$changes" ]] || { printf 'Copy verification failed: %s\n%s\n' "$source" "$changes" >&2; exit 1; }
+  mv "$source" "$source.nvme-before-usb"
+  mkdir -m 700 "$source"
+  if [[ $name == user-* ]]; then chown "$user:$(id -gn "$user")" "$source"; fi
+  # An absent mount cannot initialize a second store on the system disk, even as root.
+  chattr +i "$source"
+  mount --bind "$destination" "$source"
+  printf 'Verified and mounted %s from %s\n' "$source" "$destination"
+done
+python3 "$root/bin/solverforge-container-storage-install" "$user"
+systemctl start var-lib-containers-storage.mount "$(systemd-escape --path --suffix=mount "$home/.local/share/containers/storage")"
+/usr/local/libexec/solverforge-container-storage-online "$user"
+# Restore containers not owned by the named service units, without starting previously stopped ones.
+while IFS= read -r name; do
+  if ! u podman inspect --format '{{.State.Running}}' "$name" | grep -qx true; then u podman start "$name"; fi
+done < "$state/user-running.txt"
+while IFS= read -r name; do
+  if ! podman inspect --format '{{.State.Running}}' "$name" | grep -qx true; then podman start "$name"; fi
+done < "$state/system-running.txt"
+u systemctl --user start podman.socket
+podman volume ls -q | sort > "$state/system-volumes.after.txt"
+u podman volume ls -q | sort > "$state/user-volumes.after.txt"
+cmp "$state/system-volumes.txt" "$state/system-volumes.after.txt"
+cmp "$state/user-volumes.txt" "$state/user-volumes.after.txt"
+printf 'Migration complete. NVMe originals retained as *.nvme-before-usb pending service verification.\n'

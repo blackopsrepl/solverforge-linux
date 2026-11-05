@@ -1,0 +1,76 @@
+#!/usr/bin/env python3
+"""Install vigilance's removable-SSD Podman mount and service wiring after data migration."""
+import datetime
+import os
+from pathlib import Path
+import pwd
+import shutil
+import subprocess
+import sys
+
+UUID = '5eefa1ea-548d-4a96-bef5-e0c2f78e964b'
+ROOT = Path(__file__).resolve().parent.parent
+
+def run(*args: str) -> None:
+    subprocess.run(args, check=True)
+
+def main() -> None:
+    if os.geteuid() != 0:
+        raise SystemExit('Run with sudo after migrating the stores.')
+    user = sys.argv[1] if len(sys.argv) > 1 else os.environ.get('SUDO_USER', 'pvd')
+    account = pwd.getpwnam(user)
+    home = Path(account.pw_dir)
+    stores = ['/var/lib/containers/storage', str(home / '.local/share/containers/storage')]
+    for store in stores:
+        actual = subprocess.check_output(['findmnt', '-rn', '-T', store, '-o', 'UUID'], text=True).strip()
+        if actual != UUID:
+            raise SystemExit(f'{store}: migrate and mount the SSD copy before installing wiring')
+    fstab = Path('/etc/fstab')
+    before = fstab.read_text()
+    lines = []
+    for line in before.splitlines():
+        fields = line.split()
+        if len(fields) >= 4 and fields[0] == f'UUID={UUID}' and fields[1] in ('/mnt/INTERZONE', '/srv/lab'):
+            options = fields[3].split(',')
+            options = [o for o in options if not o.startswith('x-systemd.device-timeout=')]
+            for option in ('nofail', 'x-systemd.device-timeout=5s'):
+                if option not in options:
+                    options.append(option)
+            fields[3] = ','.join(options)
+            line = '\t'.join(fields)
+        if len(fields) >= 2 and fields[1] in stores:
+            continue
+        lines.append(line)
+    for source, target in zip(('/srv/lab/containers/system', f'/srv/lab/containers/user-{user}'), stores):
+        lines.append(f'{source}\t{target}\tnone\tbind,nofail,x-systemd.requires-mounts-for=/srv/lab\t0\t0')
+    after = '\n'.join(lines) + '\n'
+    if after != before:
+        backup = fstab.with_name('fstab.before-container-ssd-' + datetime.datetime.now().strftime('%Y%m%d%H%M%S'))
+        shutil.copy2(fstab, backup)
+        fstab.write_text(after)
+    Path('/usr/local/libexec').mkdir(exist_ok=True)
+    for command in ('solverforge-container-storage-check', 'solverforge-container-storage-online'):
+        target = Path('/usr/local/libexec') / command
+        shutil.copy2(ROOT / 'bin' / command, target)
+        target.chmod(0o755)
+    for name in ('forgejo', 'sfm-dovecot', 'forgejo-runners', 'search-searxng', 'search-firecrawl', 'podman'):
+        target = Path(f'/etc/systemd/system/{name}.service.d/30-container-storage.conf')
+        target.parent.mkdir(parents=True, exist_ok=True)
+        shutil.copy2(ROOT / 'default/container-storage/system-service.conf', target)
+    for name in ('heimdall', 'local-hoppscotch-pgadmin', 'podman'):
+        target = home / f'.config/systemd/user/{name}.service.d/30-container-storage.conf'
+        target.parent.mkdir(parents=True, exist_ok=True)
+        shutil.copy2(ROOT / 'default/container-storage/user-service.conf', target)
+        os.chown(target.parent, account.pw_uid, account.pw_gid)
+        os.chown(target, account.pw_uid, account.pw_gid)
+    for store in stores:
+        unit = subprocess.check_output(['systemd-escape', '--path', '--suffix=mount', store], text=True).strip()
+        target = Path('/etc/systemd/system') / (unit + '.d') / '30-usb-dependency.conf'
+        target.parent.mkdir(parents=True, exist_ok=True)
+        target.write_text('[Unit]\nBindsTo=srv-lab.mount\nAfter=srv-lab.mount\n')
+    run('systemctl', 'daemon-reload')
+    run('runuser', '-u', user, '--', 'env', f'XDG_RUNTIME_DIR=/run/user/{account.pw_uid}', f'DBUS_SESSION_BUS_ADDRESS=unix:path=/run/user/{account.pw_uid}/bus', 'systemctl', '--user', 'daemon-reload')
+    print('Optional USB mounts, storage guards and service dependencies installed.')
+
+if __name__ == '__main__':
+    main()

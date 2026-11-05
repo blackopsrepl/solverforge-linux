@@ -1,0 +1,10 @@
+[Unit]
+Description=Hourly size-based rotation of existing container logs
+
+[Timer]
+OnCalendar=hourly
+RandomizedDelaySec=5min
+Persistent=true
+
+[Install]
+WantedBy=timers.target

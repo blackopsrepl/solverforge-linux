@@ -1,0 +1,9 @@
+[Unit]
+Description=Conservative Podman and idle CI Docker garbage collection
+
+[Service]
+Type=oneshot
+ExecStart=@EXEC@ gc --apply
+Nice=19
+IOSchedulingClass=idle
+TimeoutStartSec=45min

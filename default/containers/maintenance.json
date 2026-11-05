@@ -1,0 +1,5 @@
+{
+  "storage_uuid": null,
+  "forgejo_db": null,
+  "dind": ["dind-ruby", "dind-python", "dind-cpp", "dind-rust"]
+}

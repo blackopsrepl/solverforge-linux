@@ -1,0 +1,14 @@
+#!/usr/bin/env bash
+# Fail closed when removable container storage is unavailable; never initialize a fallback store.
+set -euo pipefail
+case "${1:-}" in
+  system) store=/var/lib/containers/storage ;;
+  user) store="${HOME}/.local/share/containers/storage" ;;
+  *) echo 'Usage: solverforge-container-storage-check system|user' >&2; exit 2 ;;
+esac
+expected=5eefa1ea-548d-4a96-bef5-e0c2f78e964b
+actual=$(findmnt -rn -T "$store" -o UUID 2>/dev/null || true)
+if [[ "$actual" != "$expected" ]] || ! mountpoint -q "$store"; then
+  printf 'Container storage unavailable: %s is not mounted from INTERZONE.\n' "$store" >&2
+  exit 1
+fi
