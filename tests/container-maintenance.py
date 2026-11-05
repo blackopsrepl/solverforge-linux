@@ -5,7 +5,6 @@ import importlib.util
 import json
 import os
 from pathlib import Path
-import sqlite3
 import subprocess
 import tempfile
 import time
@@ -32,26 +31,34 @@ class RetentionPolicy(unittest.TestCase):
                 self.assertIn('Podman was not invoked', result.stdout)
             self.assertEqual(sorted(p.name for p in Path(tmp).iterdir()), ['config.json'])
 
-    def test_runner_active_recent_stale_and_quiet(self):
-        with tempfile.TemporaryDirectory(prefix='runner-policy-', dir=os.environ['TMPDIR']) as tmp:
-            path = Path(tmp) / 'forgejo.db'
-            now = int(time.time())
-            with sqlite3.connect(path) as db:
-                db.executescript('CREATE TABLE action_runner (id INTEGER,name TEXT,deleted INTEGER,last_online INTEGER);'
-                                 'CREATE TABLE action_task (id INTEGER,runner_id INTEGER,started INTEGER,stopped INTEGER,updated INTEGER);')
-                db.execute('INSERT INTO action_runner VALUES (1,?,NULL,?)', ('rust-runner', now))
-                db.execute('INSERT INTO action_task VALUES (10,1,?,0,?)', (now - 1800, now))
-            self.assertFalse(maintenance.runner_idle(str(path), 'rust-runner', now)[0])
-            with sqlite3.connect(path) as db:
-                db.execute('UPDATE action_task SET stopped=?,updated=?', (now - 10, now - 10))
-            self.assertFalse(maintenance.runner_idle(str(path), 'rust-runner', now)[0])
-            with sqlite3.connect(path) as db:
-                db.execute('UPDATE action_task SET stopped=?,updated=?', (now - 1000, now - 1000))
-            self.assertTrue(maintenance.runner_idle(str(path), 'rust-runner', now)[0])
-            with sqlite3.connect(path) as db:
-                db.execute('UPDATE action_runner SET last_online=?', (now - 1000,))
-            self.assertFalse(maintenance.runner_idle(str(path), 'rust-runner', now)[0])
-            self.assertFalse(maintenance.runner_idle(None, 'rust-runner', now)[0])
+    def test_jobs_api_safety_policy(self):
+        for job in [
+            {'id': 1, 'status': 'running', 'task_id': 2, 'runs_on': ['rust']},
+            {'id': 1, 'status': 'waiting', 'task_id': 2, 'runs_on': []},
+            {'id': 1, 'status': 'waiting', 'task_id': 0, 'runs_on': ['cpp']},
+        ]:
+            self.assertTrue(maintenance.jobs_busy([job])[0])
+        self.assertFalse(maintenance.jobs_busy([])[0])
+        self.assertFalse(maintenance.jobs_busy([
+            {'id': 1, 'status': 'waiting', 'task_id': 0, 'runs_on': []}])[0])
+        with self.assertRaises(ValueError):
+            maintenance.jobs_busy([{'status': 'success'}])
+
+    def test_build_retention_requires_positive_marker_and_two_ages(self):
+        now = int(time.time())
+        cid = 'a' * 64
+        external = {'Id': cid, 'State': 'storage'}
+        created = maintenance.datetime.fromtimestamp(now - 8 * 86400, maintenance.timezone.utc).isoformat()
+        metadata = {'id': cid, 'created': created}
+        builder = {'type': 'buildah 0.0.1', 'container-id': cid}
+        old = now - 8 * 86400
+        self.assertTrue(maintenance.old_build_container(external, metadata, builder, old, now))
+        self.assertFalse(maintenance.old_build_container(external, metadata, {}, old, now))
+        self.assertFalse(maintenance.old_build_container(external, metadata, builder, now, now))
+        self.assertFalse(maintenance.old_build_container(dict(external, State='exited'), metadata, builder, old, now))
+        self.assertFalse(maintenance.old_build_container(external, metadata, dict(builder, **{'container-id': 'b' * 64}), old, now))
+        recent = maintenance.datetime.fromtimestamp(now - 86400, maintenance.timezone.utc).isoformat()
+        self.assertFalse(maintenance.old_build_container(external, dict(metadata, created=recent), builder, old, now))
 
     def test_real_logrotate_preserves_open_writer_inode(self):
         with tempfile.TemporaryDirectory(prefix='rotation-policy-', dir=os.environ['TMPDIR']) as tmp:

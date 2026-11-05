@@ -11,7 +11,7 @@ the target desktop user for `--user`; use sudo for `--system`.
 
 ```sh
 sudo env SOLVERFORGE_PATH="$PWD" bin/solverforge-container-maintenance-install \
-  --system --storage-uuid YOUR_FILESYSTEM_UUID --forgejo-db /path/to/forgejo.db
+  --system --storage-uuid YOUR_FILESYSTEM_UUID --forgejo-auth /path/to/existing/automation-login.json
 SOLVERFORGE_PATH="$PWD" bin/solverforge-container-maintenance-install \
   --user --storage-uuid YOUR_FILESYSTEM_UUID
 ```
@@ -26,7 +26,7 @@ installation if a scheduled run was missed; finish storage provisioning first.
 System configuration is `/etc/solverforge/container-maintenance.json`; user
 configuration is `${XDG_CONFIG_HOME:-~/.config}/solverforge/container-maintenance.json`.
 The installer preserves existing configuration and changes only explicitly
-provided UUID/DB values; a first user install inherits the system configuration.
+provided UUID/auth-path values; a first user install inherits the system configuration.
 It installs executable copies under `/usr/local/libexec/` or `~/.local/libexec/`
 and renders units from tracked templates. Run the installer again after source
 updates. No compatibility symlinks are created.
@@ -49,24 +49,42 @@ not made safe by a preflight check.
 
 - Podman: dangling images older than 7 days only. Tagged images are **never**
   automatically removed. All application containers, including stopped ones,
-  volumes, networks, and storage/build containers are retained.
-- No `system prune`, `container prune`, `volume prune`, `--external`, or forced
-  image deletion. `image prune -f` suppresses confirmation only; normal engine
+  volumes and networks are retained. Positively identified old external build
+  containers are the sole container-removal exception.
+- No `system prune`, `container prune`, `volume prune`, image-prune
+  `--external`, or forced image deletion. `image prune -f` suppresses confirmation only; normal engine
   in-use checks remain. There is no tagged-image opt-in in this implementation.
-- The deployed Podman 5.4.2 does not expose `rm --storage`. Build leftovers are
-  deliberately excluded: age alone cannot prove an external build is idle.
-  No filesystem deletion or alternative `buildah rm` fallback is used.
+- External build containers: require `podman ps -a --external` state `storage`,
+  a matching 64-hex ID in containers/storage `containers.json`, and a matching
+  `userdata/buildah.json` state marker with type `buildah 0.0.1` and the same
+  `container-id`. Both the **storage creation timestamp** and **builder state
+  modification time** must be at least 7 days old. No naming heuristic alone
+  qualifies a container. Unknown external application storage is retained.
 - Host `/proc` argv inspection skips GC on build/image transfer clients and
-  BuildKit/Buildah processes. Restricted process visibility fails closed.
-- Rootful Podman image GC additionally requires the four configured Forgejo
-  runners to be online within 3 minutes and quiet for 15 minutes, using a
-  read-only SQLite connection. Any task without a stop timestamp, or recent
-  start/stop/update, blocks GC. A missing/unreadable DB or changed schema fails
-  closed. DB contents/credentials are never dumped or written.
-- Each configured running DinD daemon is checked independently: matching
-  runner online/quiet, no running nested Docker containers, only expected
-  daemon processes, and no runner child processes. Conditions are rechecked
-  before every prune. Missing/stale runners are skipped, not assumed idle.
+  BuildKit/Buildah processes. Candidate IDs referenced by live process cgroups
+  are also retained. Restricted process visibility fails closed.
+- Before *all* GC, the supported authenticated administrative endpoint
+  `GET /api/v1/admin/runners/jobs` must prove no running jobs, assigned jobs, or
+  waiting jobs for local runner labels. Empty-label, unassigned waiting jobs
+  cannot execute on these local runners and do not block GC. The deployed API
+  returns this whole active-job list without pagination; an unexpected schema
+  or authorization error fails closed. There are **no Forgejo SQL queries**.
+- `forgejo_auth` references an existing mode-0600 JSON credential store with
+  `username` / `password`; credentials are read in process, never logged, copied,
+  or minted. Basic authentication is allowed only over loopback HTTP or HTTPS,
+  and redirects are rejected. Default `forgejo_url` is `http://127.0.0.1:3002`.
+- Two idle API observations at least 15 minutes apart are required, recorded
+  under the maintenance state directory. An observed active job resets the
+  checkpoint. This does not assert continuous idleness between timer runs.
+- Before every external-build removal, repeat API/process checks and reload
+  external membership and storage age/identity metadata. Use the installed
+  supported `podman rm --storage ID`, with **no force or volume flag**. This
+  option is accepted by Podman 5.4.2 despite being absent from its help text;
+  never infer unsupported behavior solely from missing help output.
+- Each configured running DinD additionally requires no running nested Docker
+  containers, only expected daemon processes, and no matching runner child
+  processes. Conditions are rechecked before every prune. No API/runner error
+  is interpreted as idleness.
 - Idle DinD: native Docker build-cache retention **7 days**; dangling image
   retention **30 days**. All tagged images are retained, including old runner
   bases and toolchain images. Stopped nested containers and volumes remain.

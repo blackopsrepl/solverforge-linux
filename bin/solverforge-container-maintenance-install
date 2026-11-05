@@ -2,15 +2,15 @@
 # Install only this feature; never restart containers or journald.
 set -euo pipefail
 ROOT="${SOLVERFORGE_PATH:-$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")/.." && pwd)}"
-scope=""; enable=true; uuid=""; db=""
+scope=""; enable=true; uuid=""; auth=""
 while (($#)); do
     case "$1" in
         --system) scope=system; shift ;;
         --user) scope=user; shift ;;
         --no-enable) enable=false; shift ;;
         --storage-uuid) uuid="${2:?UUID required}"; shift 2 ;;
-        --forgejo-db) db="${2:?DB path required}"; shift 2 ;;
-        *) printf 'Usage: %s --system|--user [--no-enable] [--storage-uuid UUID] [--forgejo-db PATH]\n' "$0" >&2; exit 2 ;;
+        --forgejo-auth) auth="${2:?credential path required}"; shift 2 ;;
+        *) printf 'Usage: %s --system|--user [--no-enable] [--storage-uuid UUID] [--forgejo-auth PATH]\n' "$0" >&2; exit 2 ;;
     esac
 done
 [[ -n "$scope" ]] || { printf 'Choose --system or --user\n' >&2; exit 2; }
@@ -35,12 +35,12 @@ else
 fi
 install -Dm755 "$ROOT/bin/solverforge-container-maintenance" "$exe"
 install -Dm644 "$ROOT/default/containers/90-solverforge-log-limits.conf" "$containers/90-solverforge-log-limits.conf"
-python3 - "$ROOT" "$units" "$exe" "$config" "$uuid" "$db" <<'PY'
+python3 - "$ROOT" "$units" "$exe" "$config" "$uuid" "$auth" <<'PY'
 import json
 from pathlib import Path
 import re
 import sys
-root, units, exe, config, uuid, db = sys.argv[1:]
+root, units, exe, config, uuid, auth = sys.argv[1:]
 if uuid and not re.fullmatch(r'[0-9a-fA-F-]{36}', uuid):
     raise SystemExit('Invalid filesystem UUID')
 # systemd ExecStart quoting: reject directive/specifier expansion in paths.
@@ -66,8 +66,9 @@ else:
     settings = json.loads((Path(root) / 'default/containers/maintenance.json').read_text())
 if uuid:
     settings['storage_uuid'] = uuid
-if db:
-    settings['forgejo_db'] = db
+settings.pop('forgejo_db', None)
+if auth:
+    settings['forgejo_auth'] = auth
 config.parent.mkdir(parents=True, exist_ok=True)
 config.write_text(json.dumps(settings, indent=2) + '\n')
 config.chmod(0o644)

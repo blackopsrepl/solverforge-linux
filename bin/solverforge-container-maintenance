@@ -1,18 +1,20 @@
 #!/usr/bin/python3
 """Conservative local Podman/DinD retention and existing file-log rotation."""
 import argparse
+import base64
+from datetime import datetime, timezone
 import fcntl
 import json
 import os
 from pathlib import Path
+import re
 import shlex
-import sqlite3
 import subprocess
 import sys
 import time
+import urllib.request
 
 
-DAY = 86400
 STORAGE_POLICY = None
 
 
@@ -21,6 +23,7 @@ def run(*args):
         ready, reason = storage_ready(STORAGE_POLICY)
         if not ready:
             raise RuntimeError(f'Storage disappeared before Podman operation: {reason}')
+        args = (args[0], '--remote=false', *args[1:])
     return subprocess.run(args, check=True, text=True, stdout=subprocess.PIPE,
                           stderr=subprocess.PIPE, timeout=600).stdout
 
@@ -57,37 +60,73 @@ def build_processes():
     return found
 
 
-def runner_idle(db_path, runner_name=None, now=None):
-    """Fail closed; require a live registered runner and 15 minutes of quiet."""
-    now = time.time() if now is None else now
-    if not db_path:
-        return False, 'Forgejo DB not configured'
-    with sqlite3.connect(Path(db_path).resolve().as_uri() + '?mode=ro', uri=True,
-                         timeout=5) as db:
-        names = [runner_name] if runner_name else ['ruby-runner', 'python-runner', 'cpp-runner', 'rust-runner']
-        for name in names:
-            rows = db.execute('SELECT id,last_online FROM action_runner WHERE name=? AND COALESCE(deleted,0)=0', (name,)).fetchall()
-            live = [rid for rid, online in rows if online >= now - 180]
-            if not live:
-                return False, f'{name}: no recently online registered runner'
-            ids = [rid for rid, _ in rows]
-            placeholders = ','.join('?' for _ in ids)
-            tasks = db.execute(f'SELECT id,started,stopped,updated FROM action_task WHERE runner_id IN ({placeholders})', ids)
-            for task, started, stopped, updated in tasks:
-                if not stopped or max(started or 0, stopped or 0, updated or 0) > now - 900:
-                    return False, f'{name}: task {task} active/recent'
-    return True, 'runner quiet for >=15m'
+class NoRedirect(urllib.request.HTTPRedirectHandler):
+    def redirect_request(self, req, fp, code, msg, headers, newurl):
+        return None
 
 
-def dind_idle(name, config):
-    idle, reason = runner_idle(config.get('forgejo_db'), name.removeprefix('dind-') + '-runner')
+def forgejo_jobs(config):
+    auth_path = config.get('forgejo_auth')
+    if not auth_path:
+        raise RuntimeError('forgejo_auth not configured; cannot prove CI idle')
+    path = Path(auth_path)
+    if path.stat().st_mode & 0o077:
+        raise RuntimeError('Forgejo credential file must be private (0600)')
+    auth = json.loads(path.read_text())
+    value = base64.b64encode((auth['username'] + ':' + auth['password']).encode()).decode()
+    url = config.get('forgejo_url', 'http://127.0.0.1:3002').rstrip('/')
+    if not url.startswith(('http://127.0.0.1:', 'https://')):
+        raise RuntimeError('Forgejo Basic auth requires loopback HTTP or HTTPS')
+    request = urllib.request.Request(url + '/api/v1/admin/runners/jobs',
+                                     headers={'Authorization': 'Basic ' + value})
+    with urllib.request.build_opener(NoRedirect).open(request, timeout=30) as response:
+        jobs = json.load(response)
+    if not isinstance(jobs, list):
+        raise ValueError('Unexpected Forgejo jobs API schema')
+    return jobs
+
+
+def jobs_busy(jobs):
+    local_labels = {'rust', 'rust-latest', 'rust-slim', 'tauri', 'python',
+                    'python-3.13', 'python-slim', 'ruby', 'ruby-latest',
+                    'ruby-slim', 'cpp', 'cpp-latest', 'qt', 'qt-latest', 'ubuntu-latest'}
+    for job in jobs:
+        status = job['status']
+        if status not in {'waiting', 'running'}:
+            raise ValueError('Unexpected non-active job in active-jobs API')
+        if status == 'running' or job['task_id'] or local_labels.intersection(job['runs_on'] or []):
+            return True, f"Forgejo job {job['id']} task {job['task_id']} {status}"
+    return False, 'no active or assigned local CI jobs'
+
+
+def forgejo_idle(config, state):
+    busy, reason = jobs_busy(forgejo_jobs(config))
+    checkpoint = state / 'ci-idle-since'
+    if busy:
+        checkpoint.unlink(missing_ok=True)
+        return False, reason
+    now = time.time()
+    if not checkpoint.exists():
+        checkpoint.write_text(str(now))
+        return False, 'first idle observation; waiting 15m'
+    since = float(checkpoint.read_text())
+    if not 900 <= now - since:
+        return False, 'CI idle observation interval shorter than 15m'
+    # Also record API polling freshness. An hourly/daily gap cannot prove a
+    # continuously idle interval; require two observations 15m apart, with
+    # process inspection and native in-use checks as the final safety guards.
+    return True, reason
+
+
+def dind_idle(name, config, state):
+    idle, reason = forgejo_idle(config, state)
     if not idle:
         return False, reason
     if run('podman', 'exec', name, 'docker', 'ps', '-q').strip():
         return False, 'running Docker containers'
     top = run('podman', 'top', name, 'comm').splitlines()[1:]
     allowed = {'dockerd', 'containerd', 'docker-init', 'dind-entrypoint', 'sh'}
-    if any(line.strip() not in allowed for line in top):
+    if not top or any(line.strip() not in allowed for line in top):
         return False, 'non-daemon processes inside DinD'
     runner_top = run('podman', 'top', name.replace('dind-', 'runner-', 1), 'comm').splitlines()[1:]
     if not runner_top or any(line.strip() != 'forgejo-runner' for line in runner_top):
@@ -95,44 +134,95 @@ def dind_idle(name, config):
     return True, reason
 
 
-def gc(config, apply):
+def old_build_container(external, metadata, builder, modified, now):
+    cid = external['Id']
+    if not re.fullmatch('[0-9a-f]{64}', cid) or external.get('State') != 'storage':
+        return False
+    if metadata.get('id') != cid or builder.get('type') != 'buildah 0.0.1' or builder.get('container-id') != cid:
+        return False
+    created = datetime.fromisoformat(metadata['created'].replace('Z', '+00:00'))
+    if created.tzinfo is None:
+        return False
+    return 0 < created.timestamp() <= now - 7 * 86400 and modified <= now - 7 * 86400
+
+
+def external_builds():
+    info = load_json('podman', 'info', '--format', 'json')['store']
+    graphroot = Path(info['graphRoot']).resolve()
+    if STORAGE_POLICY is not None:
+        ready, expected = storage_ready(STORAGE_POLICY)
+        if not ready or graphroot != Path(expected).resolve():
+            raise RuntimeError('Podman graphroot differs from guarded mount')
+    driver = info['graphDriverName']
+    if not re.fullmatch('[a-z0-9_-]+', driver):
+        raise ValueError('Unsafe storage driver name')
+    directory = graphroot / (driver + '-containers')
+    metadata = {row['id']: row for row in json.loads((directory / 'containers.json').read_text())}
+    candidates = []
+    for row in load_json('podman', 'ps', '-a', '--external', '--format', 'json'):
+        cid = row['Id']
+        if row.get('State') != 'storage' or not re.fullmatch('[0-9a-f]{64}', cid):
+            continue
+        marker = directory / cid / 'userdata/buildah.json'
+        if not marker.is_file() or marker.is_symlink():
+            emit(f'KEEP external {cid}: no positive Buildah state marker')
+            continue
+        if old_build_container(row, metadata.get(cid, {}), json.loads(marker.read_text()),
+                               marker.stat().st_mtime, time.time()):
+            referenced = False
+            for proc in Path('/proc').glob('[0-9]*'):
+                try:
+                    if cid in (proc / 'cgroup').read_text():
+                        referenced = True
+                        break
+                except FileNotFoundError:
+                    continue
+            if referenced:
+                emit(f'KEEP external build {cid}: live process cgroup reference')
+            else:
+                candidates.append(cid)
+        else:
+            emit(f'KEEP external {cid}: not a positively identified idle-age build')
+    return candidates
+
+
+def gc(config, state, apply):
     busy = build_processes()
     if busy:
         emit(f'SKIP GC: build/image operations active: {busy}')
         return
-    root = os.geteuid() == 0
-    if root:
-        idle, reason = runner_idle(config.get('forgejo_db'))
-    else:
-        # Host-wide process inspection above covers local rootless build clients.
-        idle, reason = True, 'no local build/image operation processes'
-    if idle:
-        # -f here only suppresses the prune confirmation. Never --external or -a.
-        mutate(['podman', 'image', 'prune', '-f', '--filter', 'until=168h'], apply)
-    else:
-        emit(f'SKIP Podman image GC: {reason}')
-    # The installed Podman 5.4.2 lacks rm --storage. Do not replace it with
-    # buildah rm, filesystem deletion, system prune, or container prune.
-    emit('KEEP all storage/build containers: no automatic rm --storage policy')
-    if not root:
+    idle, reason = forgejo_idle(config, state)
+    if not idle:
+        emit(f'SKIP GC: {reason}')
+        return
+    for cid in external_builds():
+        # A fresh API/process/storage snapshot is required for EACH removal.
+        idle, reason = forgejo_idle(config, state)
+        if not idle or build_processes():
+            emit(f'SKIP GC: activity changed ({reason})')
+            return
+        if cid not in external_builds():
+            emit(f'SKIP {cid}: storage metadata changed')
+            continue
+        # Hidden in 5.4.2 help, but supported; never force or remove volumes.
+        mutate(['podman', 'rm', '--storage', cid], apply)
+    idle, reason = forgejo_idle(config, state)
+    if not idle or build_processes():
+        emit(f'SKIP image GC: activity changed ({reason})')
+        return
+    mutate(['podman', 'image', 'prune', '-f', '--filter', 'until=168h'], apply)
+    if os.geteuid() != 0:
         return
     containers = {n for c in load_json('podman', 'ps', '--format', 'json') for n in c['Names']}
     for name in config.get('dind', []):
         if name not in containers:
             emit(f'SKIP {name}: not running')
             continue
-        idle, reason = dind_idle(name, config)
-        if not idle:
-            emit(f'SKIP {name}: {reason}')
-            continue
         for tail in [
             ['builder', 'prune', '-f', '--filter', 'until=168h'],
-            # No --all: preserve every tagged runner base, regardless of age.
             ['image', 'prune', '-f', '--filter', 'until=720h'],
         ]:
-            # Recheck just before each native operation. Docker preserves in-use
-            # cache/images if a job arrives after this observational guard.
-            idle, reason = dind_idle(name, config)
+            idle, reason = dind_idle(name, config, state)
             if not idle or build_processes():
                 emit(f'SKIP {name}: activity changed ({reason})')
                 break
@@ -231,7 +321,7 @@ def main():
             emit('SKIP: maintenance already running')
             return
         if args.action == 'gc':
-            gc(config, args.apply)
+            gc(config, state, args.apply)
         else:
             logs(state, args.apply)
 
@@ -239,7 +329,7 @@ def main():
 if __name__ == '__main__':
     try:
         main()
-    except (OSError, ValueError, KeyError, RuntimeError, sqlite3.Error, subprocess.SubprocessError) as error:
+    except (OSError, ValueError, KeyError, RuntimeError, subprocess.SubprocessError) as error:
         print(f'container maintenance failed closed: {error}', file=sys.stderr)
         if isinstance(error, subprocess.CalledProcessError):
             print(error.stderr, file=sys.stderr)
