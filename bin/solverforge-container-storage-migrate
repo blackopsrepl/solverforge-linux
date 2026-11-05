@@ -34,12 +34,25 @@ else
   u podman ps --format '{{.Names}}' > "$state/user-running.txt"
   podman volume ls -q | sort > "$state/system-volumes.txt"
   u podman volume ls -q | sort > "$state/user-volumes.txt"
+  python3 "$root/bin/solverforge-container-storage-volumes" snapshot "$state/system-bindings.json"
+  u mkdir -p "$home/.local/state/solverforge/container-storage-migration"
+  u python3 "$root/bin/solverforge-container-storage-volumes" snapshot "$home/.local/state/solverforge/container-storage-migration/bindings.json"
 fi
 printf 'Stopping container services for consistent final copy. Hermes and desktop remain running.\n'
+for service in forgejo-runners search-firecrawl search-searxng sfm-dovecot forgejo; do
+  dropin="/run/systemd/system/$service.service.d/90-storage-offline.conf"
+  [[ ! -e "$dropin" ]]
+  install -Dm644 "$root/default/container-storage/offline-stop.conf" "$dropin"
+done
+systemctl daemon-reload
 u systemctl --user stop podman.socket podman.service heimdall.service local-hoppscotch-pgadmin.service
 systemctl stop forgejo-runners.service search-firecrawl.service search-searxng.service sfm-dovecot.service forgejo.service podman.socket podman.service
 u podman stop --time 30 --all
 podman stop --time 30 --all
+for service in forgejo-runners search-firecrawl search-searxng sfm-dovecot forgejo; do
+  rm -- "/run/systemd/system/$service.service.d/90-storage-offline.conf"
+done
+systemctl daemon-reload
 podman unmount --all
 u podman unshare podman unmount --all
 for spec in "system:/var/lib/containers/storage" "user-$user:$home/.local/share/containers/storage"; do
@@ -75,6 +88,16 @@ done < "$state/system-running.txt"
 u systemctl --user start podman.socket
 podman volume ls -q | sort > "$state/system-volumes.after.txt"
 u podman volume ls -q | sort > "$state/user-volumes.after.txt"
-cmp "$state/system-volumes.txt" "$state/system-volumes.after.txt"
-cmp "$state/user-volumes.txt" "$state/user-volumes.after.txt"
+python3 - "$state" <<'PY'
+import pathlib, sys
+state = pathlib.Path(sys.argv[1])
+for scope in ('system', 'user'):
+    before = set((state / f'{scope}-volumes.txt').read_text().splitlines())
+    after = set((state / f'{scope}-volumes.after.txt').read_text().splitlines())
+    if missing := before - after:
+        raise SystemExit(f'{scope} volumes missing: {sorted(missing)}')
+    print(f'{scope}: all {len(before)} original volumes preserved; {len(after - before)} new volumes')
+PY
+python3 "$root/bin/solverforge-container-storage-volumes" verify "$state/system-bindings.json"
+u python3 "$root/bin/solverforge-container-storage-volumes" verify "$home/.local/state/solverforge/container-storage-migration/bindings.json"
 printf 'Migration complete. NVMe originals retained as *.nvme-before-usb pending service verification.\n'

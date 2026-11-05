@@ -1,0 +1,17 @@
+# Stable database volumes; do not let image-declared anonymous volumes reset on recreation.
+services:
+  rabbitmq:
+    # Preserve the node identity recorded in the existing RabbitMQ Mnesia database.
+    hostname: e5e069a3c742
+    volumes:
+      - rabbitmq-data:/var/lib/rabbitmq
+  nuq-postgres:
+    volumes:
+      - nuq-postgres-data:/var/lib/postgresql/data
+volumes:
+  rabbitmq-data:
+    external: true
+    name: firecrawl-rabbitmq-data
+  nuq-postgres-data:
+    external: true
+    name: firecrawl-nuq-postgres-data

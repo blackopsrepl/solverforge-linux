@@ -25,6 +25,9 @@ def main() -> None:
         actual = subprocess.check_output(['findmnt', '-rn', '-T', store, '-o', 'UUID'], text=True).strip()
         if actual != UUID:
             raise SystemExit(f'{store}: migrate and mount the SSD copy before installing wiring')
+    for volume in ('firecrawl-rabbitmq-data', 'firecrawl-nuq-postgres-data'):
+        if subprocess.run(['podman', 'volume', 'exists', volume], check=False).returncode:
+            raise SystemExit(f'Provision {volume} from the existing application data before installing storage wiring')
     fstab = Path('/etc/fstab')
     before = fstab.read_text()
     lines = []
@@ -57,6 +60,12 @@ def main() -> None:
         target = Path(f'/etc/systemd/system/{name}.service.d/30-container-storage.conf')
         target.parent.mkdir(parents=True, exist_ok=True)
         shutil.copy2(ROOT / 'default/container-storage/system-service.conf', target)
+    persistence = Path('/etc/solverforge/container-storage/firecrawl-persistence.yaml')
+    persistence.parent.mkdir(parents=True, exist_ok=True)
+    shutil.copy2(ROOT / 'default/container-storage/firecrawl-persistence.yaml', persistence)
+    firecrawl_unit = Path('/etc/systemd/system/search-firecrawl.service.d/40-persistent-volumes.conf')
+    firecrawl_unit.parent.mkdir(parents=True, exist_ok=True)
+    shutil.copy2(ROOT / 'default/container-storage/firecrawl-service.conf', firecrawl_unit)
     for name in ('heimdall', 'local-hoppscotch-pgadmin', 'podman'):
         target = home / f'.config/systemd/user/{name}.service.d/30-container-storage.conf'
         target.parent.mkdir(parents=True, exist_ok=True)
@@ -68,6 +77,20 @@ def main() -> None:
         target = Path('/etc/systemd/system') / (unit + '.d') / '30-usb-dependency.conf'
         target.parent.mkdir(parents=True, exist_ok=True)
         target.write_text('[Unit]\nBindsTo=srv-lab.mount\nAfter=srv-lab.mount\n')
+    borg_config = Path('/etc/borg/borg-config.yaml')
+    if borg_config.exists():
+        text = borg_config.read_text()
+        if '\njobs:\n' not in text:
+            raise SystemExit('Borg config has no jobs section; update backup coverage before proceeding')
+        additions = []
+        for scope, source in (('system', '/srv/lab/containers/system/volumes'),
+                              (f'user-{user}', f'/srv/lab/containers/user-{user}/volumes')):
+            name = f'container-volumes-{scope}'
+            if f'name: {name}\n' not in text:
+                additions.append(f'  - name: {name}\n    source: {source}\n    destination: {source.lstrip("/")}\n    enabled: true\n')
+        if additions:
+            shutil.copy2(borg_config, borg_config.with_name('borg-config.yaml.before-container-ssd'))
+            borg_config.write_text(text.replace('\njobs:\n', '\njobs:\n' + '\n'.join(additions) + '\n', 1))
     run('systemctl', 'daemon-reload')
     run('runuser', '-u', user, '--', 'env', f'XDG_RUNTIME_DIR=/run/user/{account.pw_uid}', f'DBUS_SESSION_BUS_ADDRESS=unix:path=/run/user/{account.pw_uid}/bus', 'systemctl', '--user', 'daemon-reload')
     print('Optional USB mounts, storage guards and service dependencies installed.')

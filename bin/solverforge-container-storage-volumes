@@ -1,0 +1,39 @@
+#!/usr/bin/env python3
+"""Snapshot or verify actual running-container volume bindings without exposing environment secrets."""
+import argparse
+import json
+from pathlib import Path
+import subprocess
+
+
+def bindings() -> dict:
+    ids = subprocess.check_output(['podman', 'ps', '-q'], text=True).split()
+    if not ids:
+        return {}
+    containers = json.loads(subprocess.check_output(['podman', 'inspect', *ids], text=True))
+    return {c['Name']: sorted([
+        {key: m.get(key) for key in ('Type', 'Name', 'Source', 'Destination')}
+        for m in c.get('Mounts', []) if m.get('Type') in ('volume', 'bind')
+    ], key=lambda m: m['Destination']) for c in containers}
+
+
+def main() -> None:
+    parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument('action', choices=('snapshot', 'verify'))
+    parser.add_argument('path', type=Path)
+    args = parser.parse_args()
+    actual = bindings()
+    if args.action == 'snapshot':
+        args.path.write_text(json.dumps(actual, indent=2) + '\n')
+        args.path.chmod(0o600)
+        print(f'Snapshotted volume bindings for {len(actual)} running containers')
+        return
+    expected = json.loads(args.path.read_text())
+    changed = [name for name, mounts in expected.items() if actual.get(name) != mounts]
+    if changed:
+        raise SystemExit('Container volume bindings changed: ' + ', '.join(changed))
+    print(f'Verified unchanged volume bindings for {len(expected)} original running containers')
+
+
+if __name__ == '__main__':
+    main()
