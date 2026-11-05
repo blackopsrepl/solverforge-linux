@@ -19,7 +19,8 @@ set -euo pipefail
 
 PATH="$HOME/.cargo/bin:$HOME/.local/share/solverforge/bin:/sbin:/bin:/usr/sbin:/usr/bin:/usr/local/bin:/usr/local/sbin"
 
-ROOT="${CRAFT_NOFUNNEL_ROOT:-$HOME/.local/share/craft-nofunnel}"
+ROOT="${CRAFT_NOFUNNEL_ROOT:-$HOME/tools/craft-nofunnel}"
+export CRAFT_NOFUNNEL_ROOT="$ROOT"
 SRC="$ROOT/src"
 STATE="$ROOT/state"
 ARTIFACTS="$ROOT/artifacts"
@@ -200,11 +201,11 @@ one_repo() {
 
   say "$repo: dispatch build (${sha:0:10})"
   python3 - "$repo" "$sha" "$MAX_SECONDS" <<'PY'
-import json, sys, time, urllib.request, urllib.error, pathlib
+import json, os, sys, time, urllib.request, urllib.error, pathlib
 
 BASE = 'http://127.0.0.1:3002'
 repo, want_sha, budget = sys.argv[1], sys.argv[2], float(sys.argv[3])
-login = json.loads((pathlib.Path.home()/'.local/share/craft-nofunnel/automation-login.json').read_text())
+login = json.loads((pathlib.Path(os.environ['CRAFT_NOFUNNEL_ROOT'])/'automation-login.json').read_text())
 import http.cookiejar, re
 jar = http.cookiejar.CookieJar()
 opener = urllib.request.build_opener(urllib.request.HTTPCookieProcessor(jar))
