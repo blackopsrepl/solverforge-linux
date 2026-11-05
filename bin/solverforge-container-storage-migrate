@@ -12,6 +12,9 @@ flock -n 9
 [[ $(findmnt -rn -T /srv/lab -o UUID) == 5eefa1ea-548d-4a96-bef5-e0c2f78e964b ]]
 for source in /var/lib/containers/storage "$home/.local/share/containers/storage"; do
   if mountpoint -q "$source"; then
+    if [[ ${2:-} == --resume-offline && -d "$source.nvme-before-usb" && $(findmnt -rn -T "$source" -o UUID) == 5eefa1ea-548d-4a96-bef5-e0c2f78e964b ]]; then
+      continue
+    fi
     echo "Already mounted: $source" >&2
     exit 1
   fi
@@ -41,9 +44,15 @@ podman unmount --all
 u podman unshare podman unmount --all
 for spec in "system:/var/lib/containers/storage" "user-$user:$home/.local/share/containers/storage"; do
   name=${spec%%:*}; source=${spec#*:}; destination="/srv/lab/containers/$name"
+  if mountpoint -q "$source"; then
+    printf 'Keeping already verified SSD mount: %s\n' "$source"
+    continue
+  fi
   mkdir -p "$destination"
   rsync -aHAXx --numeric-ids --delete "$source/" "$destination/"
-  changes=$(rsync -aHAXxnc --numeric-ids --delete --itemize-changes "$source/" "$destination/")
+  # storage.lock is containers/storage's runtime invalidation token, not application data.
+  # Host status readers can refresh it even with every container stopped.
+  changes=$(rsync -aHAXxnc --numeric-ids --delete --exclude=/storage.lock --itemize-changes "$source/" "$destination/")
   [[ -z "$changes" ]] || { printf 'Copy verification failed: %s\n%s\n' "$source" "$changes" >&2; exit 1; }
   mv "$source" "$source.nvme-before-usb"
   mkdir -m 700 "$source"
