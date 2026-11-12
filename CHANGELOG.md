@@ -2,6 +2,28 @@
 
 All notable changes to this project will be documented in this file. See [commit-and-tag-version](https://github.com/absolute-version/commit-and-tag-version) for commit guidelines.
 
+## [1.5.0](https://github.com/blackopsrepl/solverforge-linux/compare/v1.4.0...v1.5.0) (2026-11-12)
+
+
+### Features
+
+* **craft:** add maintained suite update command ([8cb42c4](https://github.com/blackopsrepl/solverforge-linux/commit/8cb42c412509aa0f202e6895e4bdad83a1cfc79c))
+* **storage:** relocate Podman stores to USB SSD with fail-closed mounts ([8416ff9](https://github.com/blackopsrepl/solverforge-linux/commit/8416ff9fcd7fe4212e5497fb4d040944b9892a48))
+* **storage:** wait for CI jobs before container storage cutover ([0f1fd80](https://github.com/blackopsrepl/solverforge-linux/commit/0f1fd80b7f9d7b0832218974150272a48e88c4cf))
+
+
+### Bug Fixes
+
+* **containers:** qualify orphan builds and use supported CI API guards ([d5266bd](https://github.com/blackopsrepl/solverforge-linux/commit/d5266bdbbc29f2968339595a8a717d106ea1e87d))
+* **craft:** update the complete fourteen-app suite ([f649de1](https://github.com/blackopsrepl/solverforge-linux/commit/f649de1cd884651978fb535da0473ac3c71df9d2))
+* **craft:** use the development SSD workspace throughout updater ([36832c5](https://github.com/blackopsrepl/solverforge-linux/commit/36832c50e420c4e67ef9116ab8fe1e90f54b11d9))
+* **launch-or-focus:** match the app, never the window title ([19a9d05](https://github.com/blackopsrepl/solverforge-linux/commit/19a9d05ed4758ab752c73844bf5f13ebf61f2242))
+* **storage:** ignore runtime lock token and retain verified partial cutovers ([1dabde0](https://github.com/blackopsrepl/solverforge-linux/commit/1dabde0e55fa2ad093d6ab9467bc1c962e5415a6))
+* **storage:** preserve database bindings and backup coverage across migration ([bd1c473](https://github.com/blackopsrepl/solverforge-linux/commit/bd1c47349ee714095815394365c3a127513b3e26))
+* **storage:** resume offline verification without losing service inventory ([f3f4f2a](https://github.com/blackopsrepl/solverforge-linux/commit/f3f4f2a32625b459c8c1681ff62dd3d1d180337e))
+* **waybar:** resolve Cargo-installed voxtype and square its badge ([3cb3443](https://github.com/blackopsrepl/solverforge-linux/commit/3cb3443b82f3d0360c182e20a83af1cb4dc82b97))
+* **waybar:** retire CronBar while preserving Backupbar ([2c40873](https://github.com/blackopsrepl/solverforge-linux/commit/2c40873af27a794c2cc1e721096c7368379cce37))
+
 ## [1.4.0](https://github.com/blackopsrepl/solverforge-linux/compare/v1.3.0...v1.4.0) (2026-10-12)
 
 ### ⚠ BREAKING CHANGES
