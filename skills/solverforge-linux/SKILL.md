@@ -347,7 +347,14 @@ interactive=true
 5. Test off-desktop before deployment, with the test socket explicitly isolated from the session. Keep the expected behavior independent of the implementation: diagnose a failed assertion instead of deleting it, adopting observed output as the oracle, or narrowing acceptance until it passes. Small focused probes beat repeatedly rewriting a large unexecuted harness.
 6. On abort, remove only task-owned edits/artifacts and report remaining system changes separately. Preserve unrelated dirty files; when asked what remains, inspect the exact diff rather than labeling it unexplained residue.
 
-For IPC semantics and isolated compositor tests, see [Sway layout investigation](references/sway-layout-investigation.md).
+### Add or change a keybinding
+
+1. Trace the active include chain with `swaymsg -r -t get_config`, then read the included system, user, and installed-framework bindings as well as the checkout. Resolve modifier variables and binding modes before declaring a chord free — searching only the checkout misses inherited shortcuts.
+2. Prefer native compositor commands when they satisfy the requested behavior. Define shared numeric defaults once with Sway `set` variables before the binding include; do not duplicate restoration values in a helper script. Make current-workspace versus global behavior explicit, including what newly created workspaces inherit.
+3. Update `bin/solverforge-keys` with the binding. Verify the actual chord in a private compositor with real clients and tree-geometry assertions, not just an equivalent IPC command — this exercises modifier handling, variable expansion, and multi-command bindings together.
+4. Before deploying, compare each affected installed file against the checkout and preserve local overrides. After deployment, check installed bytes, the active include chain, and the reload result separately; report isolated behavioral proof separately from live configuration activation.
+
+For IPC semantics, native gap toggles, and isolated compositor tests, see [Sway layout investigation](references/sway-layout-investigation.md).
 
 ```
 ~/.config/sway/config.d/solverforge.conf  # Orchestrator (sources everything)
