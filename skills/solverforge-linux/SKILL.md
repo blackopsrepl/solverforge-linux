@@ -338,6 +338,17 @@ interactive=true
 
 ## Sway Configuration
 
+### Establish feasibility before changing window management
+
+1. Identify the installed compositor/version and read its relevant command/source contract. Search established implementations before designing a replacement; distinguish stock configuration, IPC automation, a fork, and a compositor source patch.
+2. State the implementation boundary before editing. For this user's layout changes, do not introduce an autotiling daemon, custom compositor/RPM rebuild, separate login session, or compositor restart unless explicitly authorized. A request to change spawning does not authorize changing the desktop's maintenance model. If the supported solution violates those constraints, report that fact and stop rather than building an approximation.
+3. Treat “exactly” as a behavioral contract: check insertion target, orientation, split ratio, placement, preserved orientations, and close/resize behavior. Do not call aspect-ratio autotiling an exact match when it changes established splits or races rapid window arrival.
+4. Treat “restart the work” as restarting the approach, not restarting desktop processes. Honor a computer-use prohibition across all desktop interaction surfaces; do not bypass it by launching or manipulating live windows through terminal IPC.
+5. Test off-desktop before deployment, with the test socket explicitly isolated from the session. Keep the expected behavior independent of the implementation: diagnose a failed assertion instead of deleting it, adopting observed output as the oracle, or narrowing acceptance until it passes. Small focused probes beat repeatedly rewriting a large unexecuted harness.
+6. On abort, remove only task-owned edits/artifacts and report remaining system changes separately. Preserve unrelated dirty files; when asked what remains, inspect the exact diff rather than labeling it unexplained residue.
+
+For IPC semantics and isolated compositor tests, see [Sway layout investigation](references/sway-layout-investigation.md).
+
 ```
 ~/.config/sway/config.d/solverforge.conf  # Orchestrator (sources everything)
   ├── include generated/sway-colors.conf   # Hackerman border/focus colors
