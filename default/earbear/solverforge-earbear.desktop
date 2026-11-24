@@ -1,0 +1,9 @@
+[Desktop Entry]
+Type=Application
+Name=EarBear
+Comment=Generate ambient noise
+Exec=solverforge-earbear
+TryExec=solverforge-earbear
+Icon=multimedia-volume-control
+Terminal=false
+Categories=AudioVideo;Audio;

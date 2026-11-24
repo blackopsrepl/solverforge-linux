@@ -226,7 +226,7 @@ Keep machine-specific settings outside the shared repo:
 - Copy `examples/local-init.zsh.example` to `~/.config/solverforge/local-init.zsh` for host-specific shell initialization.
 - Define `show_local_menu()` in `~/.config/solverforge/extensions/menu.sh` to add **Custom → Local entries**.
 
-Install the [EarBear](https://github.com/blackopsrepl/earbear-noise) ambient noise generator from **Menu → Install → EarBear** or run `solverforge-earbear --install`. Open it from **Menu → Custom → EarBear**. The installer keeps the app and its Python environment under `${XDG_DATA_HOME:-$HOME/.local/share}/solverforge-apps/earbear`.
+Install the [EarBear](https://github.com/blackopsrepl/earbear-noise) ambient noise generator from **Menu → Install → EarBear** or run `solverforge-earbear --install`. Open it from **Apps** (Super+Space) or **Menu → Custom → EarBear** (Super+Alt+Space). The installer keeps the app and its Python environment under `${XDG_DATA_HOME:-$HOME/.local/share}/solverforge-apps/earbear`.
 
 The publish tree should not contain username-specific paths, local DBs, generated theme history, mailbox state, or private app configuration.
 

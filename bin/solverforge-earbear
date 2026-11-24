@@ -2,12 +2,19 @@
 # SolverForge — Install or launch EarBear.
 set -euo pipefail
 
-runtime="${XDG_DATA_HOME:-$HOME/.local/share}/solverforge-apps/earbear"
+data_home="${XDG_DATA_HOME:-$HOME/.local/share}"
+runtime="$data_home/solverforge-apps/earbear"
+framework="${SOLVERFORGE_PATH:-$HOME/.local/share/solverforge}"
 source_url=https://github.com/blackopsrepl/earbear-noise.git
 revision=925c470254be876f5c7e08f0652b64e00a58292c
 
 installed() {
   [[ -f "$runtime/.installed" && -x "$runtime/EarBear" && -x "$runtime/python/bin/python" ]]
+}
+
+register_desktop_entry() {
+  install -Dm644 -- "$framework/default/earbear/solverforge-earbear.desktop" \
+    "$data_home/applications/solverforge-earbear.desktop"
 }
 
 install_earbear() {
@@ -17,7 +24,8 @@ install_earbear() {
   exec 9>"$runtime.lock"
   flock 9
   if installed; then
-    printf '%s\n' 'EarBear is already installed. Open Menu → Custom → EarBear.'
+    register_desktop_entry
+    printf '%s\n' 'EarBear is ready in Apps and Menu → Custom.'
     return
   fi
   if ! mkdir -- "$runtime"; then
@@ -43,7 +51,8 @@ install_earbear() {
   "$runtime/EarBear" --help >/dev/null
   touch -- "$runtime/.installed"
   trap - EXIT INT TERM
-  printf '%s\n' 'EarBear installed. Open Menu → Custom → EarBear.'
+  register_desktop_entry
+  printf '%s\n' 'EarBear installed. Open it from Apps or Menu → Custom.'
 }
 
 case "${1:-}" in
