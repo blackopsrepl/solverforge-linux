@@ -1,0 +1,61 @@
+#!/bin/bash
+# SolverForge — Install or launch EarBear.
+set -euo pipefail
+
+runtime="${XDG_DATA_HOME:-$HOME/.local/share}/solverforge-apps/earbear"
+source_url=https://github.com/blackopsrepl/earbear-noise.git
+revision=925c470254be876f5c7e08f0652b64e00a58292c
+
+installed() {
+  [[ -f "$runtime/.installed" && -x "$runtime/EarBear" && -x "$runtime/python/bin/python" ]]
+}
+
+install_earbear() {
+  local package
+  local -a missing=()
+  mkdir -p -- "$(dirname -- "$runtime")"
+  exec 9>"$runtime.lock"
+  flock 9
+  if installed; then
+    printf '%s\n' 'EarBear is already installed. Open Menu → Custom → EarBear.'
+    return
+  fi
+  if ! mkdir -- "$runtime"; then
+    printf 'EarBear: destination already exists: %s\n' "$runtime" >&2
+    return 1
+  fi
+  trap 'rm -rf -- "$runtime"' EXIT
+  trap 'exit 130' INT
+  trap 'exit 143' TERM
+
+  for package in git python313 python313-tk python313-pip libpulse0 xwayland; do
+    rpm -q -- "$package" &>/dev/null || missing+=("$package")
+  done
+  if ((${#missing[@]})); then
+    sudo zypper install -- "${missing[@]}"
+  fi
+
+  git -C "$runtime" init --quiet
+  git -C "$runtime" fetch --depth=1 -- "$source_url" "$revision"
+  git -C "$runtime" checkout --quiet --detach "$revision"
+  /usr/bin/python3.13 -m venv --system-site-packages "$runtime/python"
+  "$runtime/python/bin/python" -m pip install --only-binary=:all: -r "$runtime/requirements.txt"
+  "$runtime/EarBear" --help >/dev/null
+  touch -- "$runtime/.installed"
+  trap - EXIT INT TERM
+  printf '%s\n' 'EarBear installed. Open Menu → Custom → EarBear.'
+}
+
+case "${1:-}" in
+  --install) install_earbear ;;
+  --installed) installed ;;
+  --help|-h) printf '%s\n' 'Usage: solverforge-earbear [--install | --installed | --help]' ;;
+  '')
+    if ! installed; then
+      printf '%s\n' 'EarBear is not installed. Run solverforge-earbear --install.' >&2
+      exit 1
+    fi
+    exec "$runtime/EarBear"
+    ;;
+  *) printf 'EarBear: unknown argument: %s\n' "$1" >&2; exit 2 ;;
+esac

@@ -315,6 +315,8 @@ Main Menu
 
 ### Adding Menu Entries
 
+**Custom GUI launchers**: Ship shared launchers in `bin/` and register them in `show_custom_menu()` in `solverforge-menu`. EarBear is installed through **Install → EarBear** and opens from **Custom → EarBear**. For machine-specific entries, define `show_local_menu()` in `~/.config/solverforge/extensions/menu.sh`; it appears under **Custom → Local entries**. Use `back_to show_custom_menu` for an explicit Back choice and launch GUI apps directly with `setsid`.
+
 **Built-in TUI apps**: Edit `show_tui_menu()` in `solverforge-menu`:
 1. Add icon+name to `entries` string: `entries="<icon>  Name\n$entries"`
 2. Add case match: `*Name*) float_interactive "command"; return ;;`
