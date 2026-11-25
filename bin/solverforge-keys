@@ -19,7 +19,7 @@ SUPER + F               Fullscreen
 SUPER + Shift+Space     Toggle floating
 SUPER + G               Toggle wayscriber overlay
 SUPER + Arrows          Focus left/down/up/right
-SUPER + Shift+Arrows    Move window left/down/up/right
+SUPER + Shift+Arrows    Move window left/down/up/right (swaytiles keeps the layout)
 SUPER + K               Keybindings (this)
 SUPER + Shift+K         Toggle keystroke overlay (OBS)
 SUPER + \               Split horizontal
@@ -27,6 +27,8 @@ SUPER + -               Split vertical
 SUPER + W               Tabbed layout
 SUPER + Shift+W         Stacking layout
 SUPER + E               Toggle split layout
+SUPER + Shift+T         Workspace layout menu (swaytiles)
+SUPER + M               Swap window with master (swaytiles)
 SUPER + S               Show scratchpad
 SUPER + Shift+S         Move to scratchpad
 SUPER + 1-0             Switch to workspace 1-10

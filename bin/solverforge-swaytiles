@@ -1,0 +1,114 @@
+#!/bin/bash
+# SolverForge — Install, run and drive swaytiles, the per-workspace layout manager.
+# Usage: solverforge-swaytiles --install      (pinned checkout + user service)
+#        solverforge-swaytiles --installed
+#        solverforge-swaytiles menu           (layout picker, SolverForge wofi style)
+#        solverforge-swaytiles ARGS...        (any swaytiles command, e.g. swap, grid)
+set -euo pipefail
+
+data_home="${XDG_DATA_HOME:-$HOME/.local/share}"
+config_home="${XDG_CONFIG_HOME:-$HOME/.config}"
+state_home="${XDG_STATE_HOME:-$HOME/.local/state}"
+runtime="$data_home/solverforge-apps/swaytiles"
+framework="${SOLVERFORGE_PATH:-$HOME/.local/share/solverforge}"
+unit="$config_home/systemd/user/swaytiles.service"
+source_url=https://github.com/sertacartun/swaytiles.git
+revision=160c2aa436933301bead3089d469ba669391f4c5
+default_layout=dwindle
+
+installed() {
+  [[ -f "$runtime/.installed" && "$(<"$runtime/.installed")" == "$revision" ]]
+}
+
+swaytiles() {
+  PYTHONPATH="$runtime" exec python3 -c 'import sys, swaytiles; sys.exit(swaytiles.cli())' "$@"
+}
+
+write_unit() {
+  mkdir -p -- "$(dirname -- "$unit")"
+  cat > "$unit" <<UNIT
+[Unit]
+Description=Per-workspace tiling layouts for sway (swaytiles, SolverForge Linux)
+
+[Service]
+Environment=PYTHONPATH=$runtime
+ExecStart=/usr/bin/python3 -c "import sys, swaytiles; sys.exit(swaytiles.cli())" --wait
+Restart=on-failure
+RestartSec=5
+RestartPreventExitStatus=2
+
+[Install]
+WantedBy=default.target
+UNIT
+}
+
+seed_default_layout() {
+  [[ -e "$state_home/swaytiles.json" ]] && return
+  PYTHONPATH="$runtime" python3 - "$default_layout" <<'PY'
+import sys
+import swaytiles
+
+state = swaytiles.load_state()
+state["layout"] = sys.argv[1]
+swaytiles.save_state(state)
+PY
+}
+
+install_swaytiles() {
+  local staging
+  mkdir -p -- "$(dirname -- "$runtime")"
+  exec 9>"$runtime.lock"
+  flock 9
+  if ! installed; then
+    staging="$(mktemp -d -- "$runtime.XXXXXX")"
+    trap 'rm -rf -- "$staging"' EXIT
+    git -C "$staging" init --quiet
+    git -C "$staging" fetch --quiet --depth=1 -- "$source_url" "$revision"
+    git -C "$staging" checkout --quiet --detach "$revision"
+    python3 -m py_compile "$staging/swaytiles.py"
+    printf '%s\n' "$revision" > "$staging/.installed"
+    rm -rf -- "$runtime"
+    mv -- "$staging" "$runtime"
+    trap - EXIT
+  fi
+  seed_default_layout
+  write_unit
+  if systemctl --user show-environment &>/dev/null; then
+    systemctl --user daemon-reload
+    systemctl --user enable --quiet swaytiles.service
+    systemctl --user restart swaytiles.service
+  fi
+  printf 'swaytiles %s is installed as swaytiles.service.\n' "${revision:0:7}"
+}
+
+layout_menu() {
+  # wofi reads its default style from $XDG_CONFIG_HOME/wofi/style.css, which keeps
+  # the layout pictures swaytiles draws for a bare `wofi` launcher.
+  local style_home="${XDG_RUNTIME_DIR:-/tmp}/solverforge-swaytiles"
+  local template="$framework/default/wofi/menu-style.css"
+  local line
+  mkdir -p -- "$style_home/wofi"
+  while IFS= read -r line; do
+    printf '%s\n' "${line//@@SOLVERFORGE_PATH@@/$framework}"
+  done < "$template" > "$style_home/wofi/style.css"
+  XDG_CONFIG_HOME="$style_home" swaytiles menu --launcher wofi
+}
+
+case "${1:-}" in
+  --install) install_swaytiles ;;
+  --installed) installed ;;
+  --help|-h|'')
+    printf '%s\n' 'Usage: solverforge-swaytiles [--install | --installed | menu | SWAYTILES-ARGS...]'
+    ;;
+  *)
+    if ! installed; then
+      printf '%s\n' 'swaytiles is not installed. Run solverforge-swaytiles --install.' >&2
+      exit 1
+    fi
+    if [[ "$1" == menu && $# -eq 1 ]]; then
+      layout_menu
+    else
+      swaytiles "$@"
+    fi
+    ;;
+esac

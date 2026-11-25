@@ -70,7 +70,7 @@ The default desktop is openSUSE + Sway + Waybar + Wofi, with Kitty and Fira Code
 Main pieces:
 
 - `solverforge-menu`: Wofi-based hierarchical menu for apps, TUI tools, capture, setup, install/remove flows, power profiles, and system actions.
-- `default/sway/bindings.conf`: keybindings for launchers, copy/paste, scratchpad, layouts, key guide, browser launch, Wayscriber, and keyboard layout cycling.
+- `default/sway/bindings.conf`: keybindings for launchers, copy/paste, scratchpad, layouts, the swaytiles layout menu and master swap, key guide, browser launch, Wayscriber, and keyboard layout cycling.
 - `default/sway/autostart.conf`: tray bridge, Waybar launcher, companion Waybar daemons, status-notifier waits, and idle/screensaver integration.
 - `default/waybar/config`: floating Waybar island with workspaces, scratchpad, voxtype, cava, Codexbar, Repobar, system metrics, Podman, Ollama, Virsh, updates, tray, power profile, and power menu.
 - `default/waybar/style.css`: Hackerman Waybar styling used by the running setup.
@@ -107,7 +107,7 @@ Running desktop helpers:
 - `solverforge-voxtype-daemon`
 - `solverforge-iphone-cam`
 - `solverforge-showkeys`
-- `solverforge-autotile`
+- `solverforge-swaytiles`
 
 Waybar modules and companions:
 
@@ -225,6 +225,8 @@ Keep machine-specific settings outside the shared repo:
 - Copy `examples/local-env.sh.example` to `~/.config/solverforge/local-env.sh` for PATH, browser, voxtype, cargo sweep, and screensaver overrides.
 - Copy `examples/local-init.zsh.example` to `~/.config/solverforge/local-init.zsh` for host-specific shell initialization.
 - Define `show_local_menu()` in `~/.config/solverforge/extensions/menu.sh` to add **Custom → Local entries**.
+
+Window layouts come from [swaytiles](https://github.com/sertacartun/swaytiles): each workspace keeps its own layout (master, dwindle, spiral, grid, tabbed and more), and anything arranged by hand wins over it. The installer fetches a pinned revision into `${XDG_DATA_HOME:-$HOME/.local/share}/solverforge-apps/swaytiles` and runs it as `swaytiles.service`; new workspaces start in `dwindle`. Pick a layout with Super+Shift+T and swap a window with the master with Super+M. While it runs, swaytiles also takes over the move, kill, scratchpad and floating keys so layouts stay whole. Run `solverforge-swaytiles --install` to reinstall it by hand.
 
 Install the [EarBear](https://github.com/blackopsrepl/earbear-noise) ambient noise generator from **Menu → Install → EarBear** or run `solverforge-earbear --install`. Open it from **Apps** (Super+Space) or **Menu → Custom → EarBear** (Super+Alt+Space). The installer keeps the app and its Python environment under `${XDG_DATA_HOME:-$HOME/.local/share}/solverforge-apps/earbear`.
 

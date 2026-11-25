@@ -340,10 +340,29 @@ interactive=true
 
 ## Sway Configuration
 
+### Layout manager (swaytiles)
+
+Window layouts come from upstream [swaytiles](https://github.com/sertacartun/swaytiles), pinned by `revision=` in `bin/solverforge-swaytiles`. `--install` (run by `install/06-tiling.sh`) fetches that revision into `${XDG_DATA_HOME:-~/.local/share}/solverforge-apps/swaytiles`, writes `~/.config/systemd/user/swaytiles.service` (`--wait`, serves every sway session), and seeds `dwindle` as the default layout only when `~/.local/state/swaytiles.json` is absent. Any other argument passes through to swaytiles; `solverforge-swaytiles menu` opens the layout picker in wofi with the SolverForge menu style. Bindings: Super+Shift+T menu, Super+M swap with master. While the daemon runs it rebinds the keys bound to sway's `move`, `kill`, `move scratchpad` and `floating` — that is upstream behavior, not a framework binding. To upgrade, bump `revision=` and rerun `--install`. Logs: `journalctl --user -u swaytiles`.
+
+### Integrate a pinned upstream tool as a framework component
+
+Follow this order (`solverforge-earbear` and `solverforge-swaytiles` are the exemplars):
+
+1. Read the upstream installer, unit, and CLI dispatch before designing. Reuse its service contract (e.g. `--wait`) rather than inventing a sway `exec_always` restart loop, which re-runs on every reload.
+2. Write one `bin/solverforge-<tool>` wrapper: a full-SHA `revision=` pin, `--install` / `--installed`, and pass-through of every other argument. Fetch the pin into a `mktemp -d` staging dir next to `${XDG_DATA_HOME}/solverforge-apps/<tool>`, validate it (e.g. `py_compile`), write the revision into `.installed`, then swap it in under `flock`. A failed fetch then leaves the working install intact, and changing the pin triggers a reinstall.
+3. Generate the systemd user unit from the wrapper with resolved paths. Skip `systemctl --user` when `systemctl --user show-environment` fails, so the installer works with no session bus.
+4. Seed user-facing defaults through the tool's own state API, and only when its state file is absent. This never overrides a choice the user made later.
+5. Call it from a numbered `install/0N-*.sh` phase that runs on both fresh installs and updates. Warn with the manual retry command on failure instead of aborting the whole desktop install. Keep post-install last; renumber it with `git mv`.
+6. Retire the predecessor in a `migrations/NNN-retire-<old>.sh` migration that is guarded on the live artifact (a running process, a file). Delete its `bin/` file, autostart line, README entry, and architecture-diagram mentions in the same change.
+7. Add bindings and `solverforge-keys` entries, and document the component in this skill.
+
+- **`pkill -x` / `pgrep -x` never match a name longer than 15 characters**: they compare against the kernel `comm`, which is truncated. Most `solverforge-*` daemons exceed that, so `exec_always pkill -x solverforge-long-name` silently stacks one daemon per reload. Match `-f '/bin/<name>$'` scoped with `-u "$UID"` instead.
+- **Theme a third-party wofi menu without losing its features**: when a tool builds its own `wofi` argv (images, parse flags) with no `--style`, materialize `default/wofi/menu-style.css` (replace `@@SOLVERFORGE_PATH@@`) into `$XDG_RUNTIME_DIR/<tool>/wofi/style.css`. Then run the tool with `XDG_CONFIG_HOME` pointing at that directory. wofi loads it as its default style. Passing a custom launcher command instead usually drops the tool's icon support.
+
 ### Establish feasibility before changing window management
 
 1. Identify the installed compositor/version and read its relevant command/source contract. Search established implementations before designing a replacement; distinguish stock configuration, IPC automation, a fork, and a compositor source patch.
-2. State the implementation boundary before editing. For this user's layout changes, do not introduce an autotiling daemon, custom compositor/RPM rebuild, separate login session, or compositor restart unless explicitly authorized. A request to change spawning does not authorize changing the desktop's maintenance model. If the supported solution violates those constraints, report that fact and stop rather than building an approximation.
+2. State the implementation boundary before editing. For this user's layout changes, do not introduce an autotiling daemon, custom compositor/RPM rebuild, separate login session, or compositor restart unless explicitly authorized (a request to adopt a named layout daemon is that authorization). A request to change spawning does not authorize changing the desktop's maintenance model. If the supported solution violates those constraints, report that fact and stop rather than building an approximation.
 3. Treat “exactly” as a behavioral contract: check insertion target, orientation, split ratio, placement, preserved orientations, and close/resize behavior. Do not call aspect-ratio autotiling an exact match when it changes established splits or races rapid window arrival.
 4. Treat “restart the work” as restarting the approach, not restarting desktop processes. Honor a computer-use prohibition across all desktop interaction surfaces; do not bypass it by launching or manipulating live windows through terminal IPC.
 5. Test off-desktop before deployment, with the test socket explicitly isolated from the session. Keep the expected behavior independent of the implementation: diagnose a failed assertion instead of deleting it, adopting observed output as the oracle, or narrowing acceptance until it passes. Small focused probes beat repeatedly rewriting a large unexecuted harness.
@@ -470,6 +489,7 @@ When the user requests system changes:
 7. **Is it a package install?** → `sudo zypper install <package>` (NEVER pacman); third-party Fedora-built RPMs follow [Third-party RPMs](#third-party-rpms-fedora-built) instead
 8. **Is it a font change?** → Update Fira Code references in kdeglobals.tpl, gtk templates, qt5ct, kitty
 9. **Does it need an env var?** → Add to `~/.config/environment.d/solverforge.conf`
+10. **Is it an upstream tool not packaged for openSUSE?** → Pinned wrapper + install phase + migration; see [Integrate a pinned upstream tool](#integrate-a-pinned-upstream-tool-as-a-framework-component)
 
 ## Third-party RPMs (Fedora-built)
 

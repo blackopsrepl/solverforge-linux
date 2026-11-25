@@ -36,4 +36,12 @@ For Sway 1.10.1, verified from source and isolated execution:
 5. Exercise the chord with `wtype -M logo -M shift -k g -m shift -m logo` inside that private environment. Assert that inner separation becomes zero and workspace edges reach the output's usable area; toggle again and assert exact baseline geometry returns. Outer gaps add to inner gaps at workspace edges, so 3px inner plus 1px outer yields a 4px inset on a bar-free output.
 6. Create a second workspace while the first has zero gaps. Assert its configured default spacing, return to the first and verify its zero-gap state, then restore the first and verify the second is unchanged. Reload the private compositor and inspect config errors before calling the binding valid.
 
+## Exercise a layout daemon and its installer off-desktop
+
+1. Run the wrapper's `--install` with every XDG base pointed at scratch (`XDG_DATA_HOME`, `XDG_CONFIG_HOME`, `XDG_STATE_HOME`), a private `XDG_RUNTIME_DIR`, and `DBUS_SESSION_BUS_ADDRESS` unset. The `systemctl --user show-environment` guard then skips enable/restart, so nothing reaches the live user manager. Afterwards, confirm the live unit and state file still do not exist.
+2. Inside the private headless compositor, start the daemon in the foreground (e.g. `solverforge-swaytiles --wait` with `SWAYSOCK` exported). Seed the base chords it takes over (`kill`, `move left`) in the minimal config, so the takeover is exercised through real `wtype` chords.
+3. Assert the default layout geometry with N windows. Then assert each binding (swap, close-and-refill) by reading the rectangles back by `app_id`. Check the tool's state file for per-workspace layout changes.
+4. For a dmenu-style picker: trigger the chord, `pgrep -a wofi`, and read `/proc/<pid>/environ` to prove the scoped style env. Capture it with `grim -o <output>` and inspect the screenshot. Type the choice with plain `wtype <text>`, `sleep`, then `wtype -k Return`. A per-key delay (`wtype -s`) can lose input to wofi.
+5. Put a harness that backgrounds processes (`&`) in a script file, and run it with `bash <file>`. The terminal tool rejects inline `&`, `setsid`, and heredoc-embedded background jobs. Test a migration that kills a predecessor daemon against stand-in processes launched at the same `/bin/<name>` path. Source it twice to prove idempotence.
+
 These are investigation mechanics, not authorization to build or deploy a custom compositor or a guarantee of full behavioral parity.

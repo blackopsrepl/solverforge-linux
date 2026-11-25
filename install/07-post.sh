@@ -1,5 +1,5 @@
 #!/bin/bash
-# Phase 6: Post-install
+# Phase 7: Post-install
 
 VERSION=$(cat "$SOLVERFORGE_PATH/version")
 
