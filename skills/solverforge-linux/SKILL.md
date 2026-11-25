@@ -370,10 +370,10 @@ Follow this order (`solverforge-earbear` and `solverforge-swaytiles` are the exe
 
 ### Add or change a keybinding
 
-1. Trace the active include chain with `swaymsg -r -t get_config`, then read the included system, user, and installed-framework bindings as well as the checkout. Resolve modifier variables and binding modes before declaring a chord free — searching only the checkout misses inherited shortcuts.
+1. Prove every new chord free before binding it, without waiting to be asked. Trace the active include chain with `swaymsg -r -t get_config` (main file is `/etc/sway/config` when `~/.config/sway/config` is absent; it globs `/etc/sway/config.d/*.conf` and `~/.config/sway/config.d/*`, which include the installed framework). Walk every included file, expand `set $var` values, normalize chord order and case (`Mod4+m` == `m+Mod4`), and include `mode { }` blocks — searching only the checkout misses inherited shortcuts. A small throwaway walker in scratch that prints matches as `kind [mode] chord command <- file` is the fastest proof. Also check chords a running daemon takes over (swaytiles rebinds the existing move/kill/scratchpad/floating chords).
 2. Prefer native compositor commands when they satisfy the requested behavior. Define shared numeric defaults once with Sway `set` variables before the binding include; do not duplicate restoration values in a helper script. Make current-workspace versus global behavior explicit, including what newly created workspaces inherit.
-3. Update `bin/solverforge-keys` with the binding. Verify the actual chord in a private compositor with real clients and tree-geometry assertions, not just an equivalent IPC command — this exercises modifier handling, variable expansion, and multi-command bindings together.
-4. Before deploying, compare each affected installed file against the checkout and preserve local overrides. After deployment, check installed bytes, the active include chain, and the reload result separately; report isolated behavioral proof separately from live configuration activation.
+3. Register the binding in every guide in the same change: `bin/solverforge-keys` (its one list feeds Super+K, Super+Shift+?, Menu → Learn and TUI Apps → Keybindings), the README's `default/sway/bindings.conf` summary line, and this skill's section for the feature. When a daemon changes what an existing chord does, annotate that chord's `solverforge-keys` line too. Verify the actual chord in a private compositor with real clients and tree-geometry assertions, not just an equivalent IPC command — this exercises modifier handling, variable expansion, and multi-command bindings together.
+4. Deploy per [Ship and deploy](#ship-and-deploy-deploy-in-production). After deployment, check installed bytes, the active include chain, and the reload result separately; report isolated behavioral proof separately from live configuration activation.
 
 For IPC semantics, native gap toggles, and isolated compositor tests, see [Sway layout investigation](references/sway-layout-investigation.md).
 
@@ -475,6 +475,16 @@ must outlive the conversation and stay on PATH. The established pattern (see
 Shellcheck-clean scripts: remove unused decls rather than leaving them
 (SC2034 noise hides real warnings), and split `local` chains with the value
 used in the same chain (SC2318).
+
+## Ship and deploy ("deploy in production")
+
+"Deploy" means all of: commit, push to both remotes, install into the live desktop, activate, verify live. Do every step before reporting.
+
+1. Commit (conventional, `feat`/`fix` for changelog). Amending is fine only while `git ls-remote` shows neither remote has the commit.
+2. Push `vigilance` with the operate-local-forgejo skill's `scripts/push-branch.sh --remote vigilance --branch main` — a bare `git push vigilance` hangs on the stored OAuth helper's browser prompt. Push `origin` (GitHub) in a retry loop. Confirm both with `git ls-remote <remote> refs/heads/main` equal to `git rev-parse HEAD`.
+3. The live `~/.local/share/solverforge` is NOT a git checkout and diverges widely from the repo, so never rsync the tree or run the full installer to ship one change — that ships every unrelated drift. Instead, for each path in `git diff --name-status HEAD~1 HEAD`, compare the live file with `git show HEAD~1:<path>`: identical → replace with `install -m755/-m644`; absent → add; diverged → merge only your hunk or leave it (docs like README) and say so. Back up the replaced live files first, delete files the change removed, then `cmp` every deployed file against the checkout.
+4. Activate only what the change needs: source the new migration/install phase with `SOLVERFORGE_PATH` set to the live root (`bash -c 'set -euo pipefail; source install/helpers/log.sh; source <file>'`), `swaymsg reload` with `SWAYSOCK=$(ls /run/user/$UID/sway-ipc.*.sock)` (agent shells lack it).
+5. Verify live: `systemctl --user is-enabled/is-active` for services, no `swaynag`, retired processes gone, and the new chords present in the live include chain (step 1 walker). Report what the change visibly did to the running session (e.g. existing workspaces re-laid out), and that chords were not pressed on the live desktop unless desktop control was requested.
 
 ## Decision Framework
 
